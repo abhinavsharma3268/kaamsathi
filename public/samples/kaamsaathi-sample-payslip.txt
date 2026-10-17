@@ -1,0 +1,27 @@
+KaamSaathi Sample — Partner Payment Statement
+Platform: DemoRide Logistics Pvt Ltd
+Partner ID: DR-88421
+Partner Name: Ravi Kumar
+Statement Period: 01 Oct 2026 – 07 Oct 2026
+Generated On: 08 Oct 2026
+
+EARNINGS
+Gross trip earnings ........................ Rs 5,000.00
+Peak-hour incentive ....................... Rs   350.00
+Referral bonus ........................... Rs   100.00
+Subtotal earnings ........................ Rs 5,450.00
+
+DEDUCTIONS
+Fuel advance recovery (code UNIQUE_DED_9911) Rs   350.00
+Platform service fee ..................... Rs   220.00
+GST on service fee ....................... Rs    39.60
+Subtotal deductions ...................... Rs   609.60
+
+NET PAYABLE ............................... Rs 4,840.40
+Payout status: PENDING (expected by 10 Oct 2026)
+Bank / UPI mask: ****4521
+
+Notes:
+1. This is a SAMPLE document for PromptWars judges to test KaamSaathi Document Helper.
+2. If deduction UNIQUE_DED_9911 is incorrect, raise a ticket in DemoRide Partner Support within 7 days.
+3. Contact: partner-support@example-demo.invalid

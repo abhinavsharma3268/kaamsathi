@@ -1,0 +1,78 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 925 >>
+stream
+BT
+/F1 11 Tf
+50 780 Td
+14 TL
+(KaamSaathi Sample - Partner Payment Statement) Tj
+T*
+(Platform: DemoRide Logistics Pvt Ltd) Tj
+T*
+(Partner ID: DR-88421) Tj
+T*
+(Partner Name: Ravi Kumar) Tj
+T*
+(Statement Period: 01 Oct 2026 to 07 Oct 2026) Tj
+T*
+(Generated On: 08 Oct 2026) Tj
+T*
+(EARNINGS) Tj
+T*
+(Gross trip earnings: Rs 5000.00) Tj
+T*
+(Peak-hour incentive: Rs 350.00) Tj
+T*
+(Referral bonus: Rs 100.00) Tj
+T*
+(Subtotal earnings: Rs 5450.00) Tj
+T*
+(DEDUCTIONS) Tj
+T*
+(Fuel advance recovery code UNIQUE_DED_9911: Rs 350.00) Tj
+T*
+(Platform service fee: Rs 220.00) Tj
+T*
+(GST on service fee: Rs 39.60) Tj
+T*
+(Subtotal deductions: Rs 609.60) Tj
+T*
+(NET PAYABLE: Rs 4840.40) Tj
+T*
+(Payout status: PENDING expected by 10 Oct 2026) Tj
+T*
+(Bank or UPI mask: ****4521) Tj
+T*
+(NOTE: SAMPLE document for PromptWars judges to test Document Helper.) Tj
+T*
+(If UNIQUE_DED_9911 is wrong, contact DemoRide Partner Support within 7 days.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000001223 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1293
+%%EOF

@@ -48,6 +48,9 @@ async function extractTextFromFile(file: File): Promise<string> {
   );
 }
 
+const SAMPLE_PDF = "/samples/kaamsaathi-sample-payslip.pdf";
+const SAMPLE_TXT = "/samples/kaamsaathi-sample-payslip.txt";
+
 export default function DocumentsPage() {
   const { t, lang } = useLanguage();
   const [text, setText] = useState("");
@@ -55,6 +58,22 @@ export default function DocumentsPage() {
   const [answer, setAnswer] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sampleHint, setSampleHint] = useState<string | null>(null);
+
+  async function loadSampleText() {
+    setError(null);
+    setAnswer(null);
+    try {
+      const res = await fetch(SAMPLE_TXT);
+      if (!res.ok) throw new Error("Could not load sample file.");
+      const sample = await res.text();
+      setText(sample);
+      setFileLabel("kaamsaathi-sample-payslip.txt (loaded)");
+      setSampleHint(t("docsSampleLoaded"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("docsNoFile"));
+    }
+  }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -109,6 +128,52 @@ export default function DocumentsPage() {
         {t("moduleDocs")}
       </h1>
       <p className="text-sm ks-muted">{t("moduleDocsDesc")}</p>
+
+      <section className="ks-card space-y-3 border-l-4 border-l-[var(--brand)] p-4">
+        <h2 className="font-bold text-[var(--brand-deep)]">{t("docsSampleTitle")}</h2>
+        <p className="text-sm ks-muted">{t("docsSampleBody")}</p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <a
+            className="ks-btn ks-btn-secondary"
+            href={SAMPLE_PDF}
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+          >
+            {t("docsSamplePdf")}
+          </a>
+          <a
+            className="ks-btn ks-btn-secondary"
+            href={SAMPLE_TXT}
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+          >
+            {t("docsSampleTxt")}
+          </a>
+          <button
+            type="button"
+            className="ks-btn ks-btn-primary"
+            onClick={loadSampleText}
+          >
+            {t("docsLoadSample")}
+          </button>
+        </div>
+        <p className="break-all text-xs ks-muted">
+          Direct PDF path:{" "}
+          <a
+            className="font-semibold text-[var(--brand)] underline"
+            href={SAMPLE_PDF}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {SAMPLE_PDF}
+          </a>
+        </p>
+        {sampleHint && (
+          <p className="text-sm font-semibold text-[var(--ok)]">{sampleHint}</p>
+        )}
+      </section>
 
       <form onSubmit={onExplain} className="ks-card space-y-3 p-4">
         <div className="flex items-center gap-2">
