@@ -5,6 +5,7 @@ import { AiBadge, WarnBadge } from "@/components/Badges";
 import { CopyButton } from "@/components/CopyButton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { callAi } from "@/lib/client-ai";
+import { buildMailto, isValidEmail, truncateForMailto } from "@/lib/mailto";
 
 type FormState = {
   issue: string;
@@ -21,14 +22,6 @@ const empty: FormState = {
   amount: "",
   outcome: "",
 };
-
-/** Keep mailto bodies within common mobile/desktop client limits. */
-const MAILTO_BODY_LIMIT = 1800;
-
-function buildMailto(to: string, subject: string, body: string): string {
-  // Native mail apps (Gmail, Outlook, Apple Mail) on phone/PC
-  return `mailto:${to.trim()}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
 
 export default function GrievancePage() {
   const { t, lang } = useLanguage();
@@ -98,16 +91,13 @@ export default function GrievancePage() {
       setMailMsg(t("grievanceMailNeedDraft"));
       return;
     }
-    if (!mailTo.trim() || !mailTo.includes("@")) {
+    if (!isValidEmail(mailTo)) {
       setMailMsg(t("grievanceMailNeedTo"));
       return;
     }
 
-    let body = draft.trim();
-    if (body.length > MAILTO_BODY_LIMIT) {
-      body =
-        body.slice(0, MAILTO_BODY_LIMIT) +
-        "\n\n[Message truncated for email app. Full draft was copied — paste the rest if needed.]";
+    const { body, truncated } = truncateForMailto(draft);
+    if (truncated) {
       void navigator.clipboard.writeText(draft).catch(() => undefined);
     }
 

@@ -1,45 +1,123 @@
+import { describe, expect, it } from "vitest";
 import {
   computeEarnings,
   createEntry,
   summarize,
   startOfWeek,
   toDateKey,
+  validateEarningsInput,
+  roundMoney,
 } from "./earnings";
 
-function assert(cond: unknown, msg: string) {
-  if (!cond) throw new Error(msg);
-}
-
-function run() {
-  const calc = computeEarnings({
-    date: "2026-10-17",
-    gross: 1000,
-    incentives: 200,
-    hours: 8,
-    fuel: 150,
-    maintenance: 50,
-    otherExpenses: 0,
+describe("earnings calculations", () => {
+  it("computes net and per-hour from user inputs", () => {
+    const calc = computeEarnings({
+      date: "2026-10-17",
+      gross: 1000,
+      incentives: 200,
+      hours: 8,
+      fuel: 150,
+      maintenance: 50,
+      otherExpenses: 0,
+    });
+    expect(calc.net).toBe(1000);
+    expect(calc.perHour).toBe(125);
   });
-  assert(calc.net === 1000, `net expected 1000 got ${calc.net}`);
-  assert(calc.perHour === 125, `perHour expected 125 got ${calc.perHour}`);
 
-  const entry = createEntry({
-    date: toDateKey(new Date()),
-    gross: 500,
-    incentives: 0,
-    hours: 5,
-    fuel: 100,
-    maintenance: 0,
-    otherExpenses: 0,
+  it("returns 0 per-hour when hours are zero", () => {
+    const calc = computeEarnings({
+      date: "2026-10-17",
+      gross: 500,
+      incentives: 0,
+      hours: 0,
+      fuel: 0,
+      maintenance: 0,
+      otherExpenses: 0,
+    });
+    expect(calc.net).toBe(500);
+    expect(calc.perHour).toBe(0);
   });
-  assert(entry.net === 400, `entry net ${entry.net}`);
-  assert(entry.perHour === 80, `entry perHour ${entry.perHour}`);
 
-  const sum = summarize([entry]);
-  assert(sum.todayNet === 400, `todayNet ${sum.todayNet}`);
-  assert(typeof startOfWeek(new Date()) === "string", "week start");
+  it("rounds money to two decimals", () => {
+    expect(roundMoney(10.005)).toBe(10.01);
+    expect(roundMoney(10.004)).toBe(10);
+  });
 
-  console.log("earnings.test.ts: OK");
-}
+  it("creates a persisted-shaped entry with id and timestamps", () => {
+    const entry = createEntry({
+      date: "2026-10-17",
+      gross: 500,
+      incentives: 0,
+      hours: 5,
+      fuel: 100,
+      maintenance: 0,
+      otherExpenses: 0,
+      notes: " lunch ",
+    });
+    expect(entry.net).toBe(400);
+    expect(entry.perHour).toBe(80);
+    expect(entry.notes).toBe("lunch");
+    expect(entry.id).toBeTruthy();
+    expect(entry.createdAt).toBeTruthy();
+  });
 
-run();
+  it("summarizes today and week from actual entries", () => {
+    const today = toDateKey(new Date());
+    const entry = createEntry({
+      date: today,
+      gross: 500,
+      incentives: 0,
+      hours: 5,
+      fuel: 100,
+      maintenance: 0,
+      otherExpenses: 0,
+    });
+    const sum = summarize([entry]);
+    expect(sum.todayNet).toBe(400);
+    expect(sum.todayHours).toBe(5);
+    expect(sum.todayPerHour).toBe(80);
+    expect(sum.weekNet).toBe(400);
+  });
+
+  it("validates missing date and negative values", () => {
+    expect(
+      validateEarningsInput({
+        gross: 100,
+        incentives: 0,
+        hours: 1,
+        fuel: 0,
+        maintenance: 0,
+        otherExpenses: 0,
+      }),
+    ).toMatch(/date/i);
+
+    expect(
+      validateEarningsInput({
+        date: "2026-10-17",
+        gross: -1,
+        incentives: 0,
+        hours: 1,
+        fuel: 0,
+        maintenance: 0,
+        otherExpenses: 0,
+      }),
+    ).toMatch(/negative/i);
+
+    expect(
+      validateEarningsInput({
+        date: "2026-10-17",
+        gross: 100,
+        incentives: 0,
+        hours: 2,
+        fuel: 10,
+        maintenance: 0,
+        otherExpenses: 0,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns a Monday-based week start key", () => {
+    const key = startOfWeek(new Date("2026-10-17T12:00:00"));
+    expect(key).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});

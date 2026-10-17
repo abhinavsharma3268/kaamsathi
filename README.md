@@ -21,6 +21,22 @@ npm install
 npm run dev
 ```
 
+## Testing
+
+```bash
+npm test              # Vitest unit + UI + mocked AI/API tests
+npm run test:watch    # watch mode
+```
+
+Coverage includes:
+- Earnings arithmetic and validation (`src/lib/earnings.test.ts`)
+- Mailto helpers (`src/lib/mailto.test.ts`)
+- i18n EN/HI/PA (`src/lib/i18n.test.ts`)
+- Mocked Gemini `runAi` integration (`src/lib/ai.test.ts`)
+- `/api/ai` request validation (`src/app/api/ai/route.test.ts`)
+- UI components: `CopyButton`, `ModuleCard`
+
+
 Open [http://localhost:3000](http://localhost:3000)
 
 Required env:
