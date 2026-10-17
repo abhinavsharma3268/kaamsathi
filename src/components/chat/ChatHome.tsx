@@ -147,7 +147,7 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
       }
 
       const assistant = makeAssistantMessage(
-        res.result.text || res.result.simpleAnswer,
+        res.result.text || res.result.simpleAnswer || "",
         res.result,
       );
       const next = [...pending, assistant];
