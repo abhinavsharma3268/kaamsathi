@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   detectSmallTalk,
-  missingDetailQuestion,
+  formForIntent,
+  formatFormAnswers,
+  needsDetailForm,
   phrase,
   resolveThread,
 } from "./chat-persona";
@@ -82,68 +84,67 @@ describe("resolveThread", () => {
   });
 });
 
-describe("missingDetailQuestion", () => {
-  it("asks who first, then when/amount, then stops", () => {
+describe("needsDetailForm", () => {
+  it("asks for a safety form on a short starter, not after a form is sent", () => {
     expect(
-      missingDetailQuestion(
-        { intent: "grievance", facts: "Help me write a complaint", asked: 0 },
-        "en",
-      ),
-    ).toBe(phrase("askWho", "en"));
+      needsDetailForm({
+        intent: "safety",
+        facts: "I feel unsafe at work",
+        asked: 0,
+        formSubmitted: false,
+        isEmergency: false,
+      }),
+    ).toBe(true);
     expect(
-      missingDetailQuestion(
-        { intent: "grievance", facts: "Help me write a complaint\nSwiggy", asked: 1 },
-        "hi",
-      ),
-    ).toBe(phrase("askWhenAmount", "hi"));
-    expect(
-      missingDetailQuestion(
-        {
-          intent: "grievance",
-          facts: "Help me write a complaint\nSwiggy\n3 days ago ₹1200",
-          asked: 2,
-        },
-        "en",
-      ),
-    ).toBeNull();
+      needsDetailForm({
+        intent: "safety",
+        facts: "I feel unsafe at work\nwhoOrWhere: a person",
+        asked: 1,
+        formSubmitted: true,
+        isEmergency: false,
+      }),
+    ).toBe(false);
   });
 
-  it("never asks more than two questions", () => {
+  it("does not show a form again after one follow-up", () => {
     expect(
-      missingDetailQuestion({ intent: "complaint_portal", facts: "x", asked: 2 }, "en"),
-    ).toBeNull();
+      needsDetailForm({
+        intent: "safety",
+        facts: "the client misbehaved with me",
+        asked: 1,
+        formSubmitted: false,
+        isEmergency: false,
+      }),
+    ).toBe(false);
   });
 
-  it("asks what is happening for a bare safety starter but not for a detailed one", () => {
+  it("offers a complaint form when who/when are missing", () => {
     expect(
-      missingDetailQuestion({ intent: "safety", facts: "I feel unsafe at work", asked: 0 }, "pa"),
-    ).toBe(phrase("askSafety", "pa"));
-    expect(
-      missingDetailQuestion(
-        {
-          intent: "safety",
-          facts: "A customer keeps following me after deliveries at night and shouting at me",
-          asked: 0,
-        },
-        "en",
-      ),
-    ).toBeNull();
+      needsDetailForm({
+        intent: "complaint_portal",
+        facts: "My payment hasn’t arrived",
+        asked: 0,
+        formSubmitted: false,
+        isEmergency: false,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("form helpers", () => {
+  it("builds safety and earnings fields", () => {
+    expect(formForIntent("safety")?.map((f) => f.id)).toEqual([
+      "safeNow",
+      "whatHappened",
+      "whoOrWhere",
+    ]);
+    expect(formForIntent("earnings")?.some((f) => f.id === "gross")).toBe(true);
+    expect(formForIntent("general")).toBeNull();
   });
 
-  it("asks work/state for a bare scheme question", () => {
-    expect(
-      missingDetailQuestion({ intent: "rights", facts: "Which scheme can help me?", asked: 0 }, "en"),
-    ).toBe(phrase("askRights", "en"));
-    expect(
-      missingDetailQuestion(
-        { intent: "rights", facts: "Which scheme can help me? I am a delivery rider in Punjab", asked: 0 },
-        "en",
-      ),
-    ).toBeNull();
-  });
-
-  it("does not gate earnings/documents/general here", () => {
-    expect(missingDetailQuestion({ intent: "earnings", facts: "x", asked: 0 }, "en")).toBeNull();
-    expect(missingDetailQuestion({ intent: "general", facts: "x", asked: 0 }, "en")).toBeNull();
+  it("formats filled form answers only", () => {
+    expect(formatFormAnswers({ who: "Swiggy", amount: "  ", when: "yesterday" })).toBe(
+      "who: Swiggy\nwhen: yesterday",
+    );
   });
 });

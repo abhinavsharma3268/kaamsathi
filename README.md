@@ -1,6 +1,19 @@
 # Saath — Work, Rights & Support
 
-**Together, by your side.** A **real GenAI** companion for Indian gig and informal workers (delivery partners, drivers, daily-wage workers).
+**Challenge vertical:** Informal / gig-worker support in India (delivery partners, drivers, daily-wage workers).
+
+**Together, by your side.** A **real GenAI** companion that talks like a person, asks only when something is missing, and never pretends a complaint was filed.
+
+## How the assistant decides (one step at a time)
+
+`decideNextStep()` in `src/lib/chat-decide.ts` is the whole brain:
+
+1. **Emergency** (bleeding, attack, 112) → safety help immediately. No form delay.
+2. **Hello / thanks** → a stable greeting. No Gemini call.
+3. **Missing facts** (who unpaid you, are you safe, today’s numbers) → Gemini replies to *what they just said*, then a short **form**.
+4. **Enough context** → do the real job: earnings math, official portal, draft letter, or rights/safety advice.
+
+The worker stays on one topic until they finish or switch. Gemini never invents eligibility or phone numbers except 112 / 108 / 1091.
 
 ## Modules
 
@@ -77,11 +90,10 @@ GEMINI_MODEL=gemini-flash-latest
 - Welfare answers may be incomplete; always verify on official sites.  
 - API key must be present; failures show honest errors (no fabricated answers).
 
-## Demo script
+## Demo script (judges)
 
-1. Home → switch language to **हिन्दी**.  
-2. **Earnings** → enter gross 1200, incentive 100, hours 8, fuel 150 → see net ₹1150 / ₹143.75/hr → Save → refresh page (persists).  
-3. **Safety** → ask about fatigue after long driving.  
-4. **Rights** → ask about e-Shram / insurance; open a source link.  
-5. **Documents** → load sample payslip → Explain.  
-6. **Write a Complaint** → generate letter → copy / open email (you send it).
+1. Home → **I feel unsafe at work** → Saath answers about that, then a 3-field form (safe now / what happened / who).  
+2. Fill “client misbehaved” → get practical next steps, not the same question again.  
+3. **New chat** → **My payment hasn’t arrived** → Gemini reply + form (who / when / amount) → official SAMADHAN link + draft message.  
+4. Switch to **हिन्दी** → **आज की कमाई जोड़ें** → fill ₹1400 / 9 hours / ₹200 fuel → app math, not a guess.  
+5. Type **hi** → instant greeting, no spinner.

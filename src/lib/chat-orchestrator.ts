@@ -11,14 +11,18 @@ import {
   type ChatIntent,
   type ChatResult,
 } from "./chat-types";
+import { decideNextStep } from "./chat-decide";
 import {
   PERSONA_PROMPT,
   detectSmallTalk,
   earningsText,
-  missingDetailQuestion,
+  formForIntent,
+  formatFormAnswers,
   phrase,
   resolveThread,
 } from "./chat-persona";
+import { talkWithGemini } from "./chat-talk";
+import type { ChatFormAnswers } from "./chat-types";
 import { routeComplaintPortal } from "./complaint-router";
 import { computeEarnings } from "./earnings";
 import type { Lang } from "./i18n";
@@ -123,23 +127,18 @@ ${wrapUntrusted("USER_MESSAGE", args.message)}
   return parsed.data;
 }
 
-function ask(intent: ChatIntent, question: string, deepLink?: string): ChatResult {
-  return {
-    kind: "follow_up",
-    intent,
-    text: question,
-    followUpQuestion: question,
-    deepLink,
-  };
-}
-
 export async function runChatTurn(args: {
   lang: Lang;
   message: string;
   history?: ChatHistoryItem[];
   forcedIntent?: ChatIntent;
+  formAnswers?: ChatFormAnswers;
 }): Promise<ChatResult> {
-  const message = sanitizeUserText(args.message, 8000);
+  const formBlob = args.formAnswers ? formatFormAnswers(args.formAnswers) : "";
+  const message = sanitizeUserText(
+    formBlob ? `${args.message}\n${formBlob}` : args.message,
+    8000,
+  );
   if (!message.trim()) {
     return {
       kind: "error",
@@ -154,8 +153,8 @@ export async function runChatTurn(args: {
 
   // Greetings / thanks: answer in Saath's own voice, no model call.
   const lastAssistant = [...history].reverse().find((h) => h.role === "assistant");
-  const smallTalk = detectSmallTalk(message);
-  if (!args.forcedIntent && smallTalk && lastAssistant?.kind !== "follow_up") {
+  const smallTalk = detectSmallTalk(args.message);
+  if (!args.forcedIntent && !formBlob && smallTalk && lastAssistant?.kind !== "follow_up") {
     const text = phrase(smallTalk, args.lang);
     return { kind: "message", intent: "general", text, simpleAnswer: text };
   }
@@ -196,27 +195,73 @@ export async function runChatTurn(args: {
     thread.intent = "safety";
   }
 
-  // Ask for missing essentials (one question at a time) before doing the work.
-  if (!local.isEmergency) {
-    const question = missingDetailQuestion(thread, args.lang);
-    if (question) return ask(intent, question);
+  const facts = sanitizeUserText(thread.facts, 8000);
+
+  const decision = decideNextStep({
+    intent,
+    facts,
+    asked: thread.asked,
+    formSubmitted: Boolean(formBlob),
+    isEmergency: local.isEmergency,
+    latestMessage: args.message,
+    continuing,
+    forcedIntent: args.forcedIntent,
+  });
+
+  if (decision.type === "small_talk") {
+    const text = phrase(decision.key, args.lang);
+    return { kind: "message", intent: "general", text, simpleAnswer: text };
   }
 
-  // Everything the worker has told us in this thread.
-  const facts = sanitizeUserText(thread.facts, 8000);
-  const ack = continuing ? phrase("gotDetails", args.lang) : "";
+  if (decision.type === "talk_and_form") {
+    const text = await talkWithGemini({
+      lang: args.lang,
+      intent: decision.intent,
+      latest: args.message,
+      facts,
+    });
+    return {
+      kind: "follow_up",
+      intent: decision.intent,
+      text,
+      followUpQuestion: text,
+      form: formForIntent(decision.intent) || undefined,
+    };
+  }
+
+  intent = decision.intent;
+
+  const ack = continuing || formBlob ? phrase("gotDetails", args.lang) : "";
 
   if (intent === "earnings") {
+    const fromForm = args.formAnswers || {};
+    const pickNum = (id: string) => {
+      const n = Number(String(fromForm[id] || "").replace(/,/g, ""));
+      return Number.isFinite(n) && n > 0 ? n : undefined;
+    };
     const nums = extractEarningsNumbers(facts);
-    if (nums.gross == null && nums.hours == null) {
-      return ask("earnings", phrase("askEarnings", args.lang), "/earnings");
+    const gross = pickNum("gross") ?? nums.gross;
+    const hours = pickNum("hours") ?? nums.hours;
+    if (gross == null && hours == null) {
+      const text = await talkWithGemini({
+        lang: args.lang,
+        intent: "earnings",
+        latest: args.message,
+        facts,
+      });
+      return {
+        kind: "follow_up",
+        intent: "earnings",
+        text,
+        form: formForIntent("earnings") || undefined,
+      };
     }
     const input = {
       date: new Date().toISOString().slice(0, 10),
-      gross: nums.gross ?? 0,
-      incentives: nums.incentives ?? 0,
-      hours: nums.hours ?? 0,
-      fuel: nums.fuel ?? 0,
+      gross: gross ?? 0,
+      incentives: pickNum("incentives") ?? nums.incentives ?? 0,
+      hours: hours ?? 0,
+      fuel: pickNum("fuel") ?? nums.fuel ?? 0,
       maintenance: nums.maintenance ?? 0,
       otherExpenses: nums.otherExpenses ?? 0,
     };
@@ -235,10 +280,22 @@ export async function runChatTurn(args: {
 
   if (intent === "documents") {
     // Need substantial pasted text to explain; otherwise ask
-    if (message.length < 40 && !/\d/.test(message)) {
-      return ask("documents", phrase("askDocument", args.lang), "/documents");
+    const pasted = args.formAnswers?.documentText || message;
+    if (pasted.length < 40 && !/\d/.test(pasted)) {
+      const text = await talkWithGemini({
+        lang: args.lang,
+        intent: "documents",
+        latest: args.message,
+        facts,
+      });
+      return {
+        kind: "follow_up",
+        intent: "documents",
+        text,
+        form: formForIntent("documents") || undefined,
+      };
     }
-    const docText = sanitizeUserText(message, 6000);
+    const docText = sanitizeUserText(pasted, 6000);
     try {
       const ai = await runAi({
         module: "documents",
@@ -257,7 +314,13 @@ export async function runChatTurn(args: {
         deepLink: "/documents",
       };
     } catch {
-      return ask("documents", phrase("askDocument", args.lang), "/documents");
+      const text = await talkWithGemini({
+        lang: args.lang,
+        intent: "documents",
+        latest: args.message,
+        facts,
+      });
+      return { kind: "follow_up", intent: "documents", text, form: formForIntent("documents") || undefined };
     }
   }
 
@@ -272,7 +335,18 @@ export async function runChatTurn(args: {
         },
       });
       if (portal.status === "needs_information" && portal.followUpQuestion) {
-        return ask("complaint_portal", portal.followUpQuestion);
+        const text = await talkWithGemini({
+          lang: args.lang,
+          intent: "complaint_portal",
+          latest: args.message,
+          facts,
+        });
+        return {
+          kind: "follow_up",
+          intent: "complaint_portal",
+          text,
+          form: formForIntent("complaint_portal") || undefined,
+        };
       }
       return {
         kind: "portal",
@@ -350,7 +424,14 @@ export async function runChatTurn(args: {
       return {
         kind: intent,
         intent,
-        text: ack + phrase(intent === "safety" ? "askSafety" : "askRights", args.lang),
+        text:
+          ack +
+          (await talkWithGemini({
+            lang: args.lang,
+            intent,
+            latest: args.message,
+            facts,
+          })),
         deepLink: intent === "safety" ? "/safety" : "/rights",
       };
     }

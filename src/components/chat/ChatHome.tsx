@@ -4,11 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, startTransition } fr
 import { BrandLogo } from "@/components/BrandLogo";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { VoiceInput } from "@/components/VoiceInput";
+import { ChatDetailForm } from "@/components/chat/ChatDetailForm";
 import { ChatResultCard } from "@/components/chat/ChatResultCard";
 import { ToolsDrawer, ToolsSidebar } from "@/components/chat/ToolsSidebar";
 import { useLanguage } from "@/hooks/useLanguage";
 import { callChat } from "@/lib/client-chat";
-import type { ChatConversation, ChatIntent, ChatMessage } from "@/lib/chat-types";
+import type { ChatConversation, ChatFormAnswers, ChatIntent, ChatMessage } from "@/lib/chat-types";
 import {
   deleteConversation,
   getConversation,
@@ -93,7 +94,7 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
   );
 
   const send = useCallback(
-    async (raw: string, intent?: ChatIntent) => {
+    async (raw: string, intent?: ChatIntent, formAnswers?: ChatFormAnswers) => {
       const text = raw.trim();
       if (!text || loading) return;
 
@@ -125,6 +126,7 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
         message: text,
         history,
         forcedIntent: intent || forcedIntent,
+        formAnswers,
         signal: ac.signal,
       });
 
@@ -166,7 +168,10 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
   // After Saath asks a question, put the cursor back in the box.
   const lastMsg = messages[messages.length - 1];
   const awaitingAnswer =
-    !loading && lastMsg?.role === "assistant" && lastMsg.result?.kind === "follow_up";
+    !loading &&
+    lastMsg?.role === "assistant" &&
+    lastMsg.result?.kind === "follow_up" &&
+    !lastMsg.result?.form;
   useEffect(() => {
     if (awaitingAnswer) inputRef.current?.focus();
   }, [awaitingAnswer]);
@@ -256,6 +261,21 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
               {m.result && m.role === "assistant" && (
                 <ChatResultCard result={m.result} />
               )}
+              {m.role === "assistant" &&
+                m.result?.form &&
+                m.id === lastMsg?.id &&
+                !loading && (
+                  <ChatDetailForm
+                    fields={m.result.form}
+                    onSubmit={(answers) => {
+                      const lines = Object.entries(answers)
+                        .filter(([, v]) => String(v || "").trim())
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join("\n");
+                      void send(lines || t("formSubmit"), m.result?.intent, answers);
+                    }}
+                  />
+                )}
             </div>
           </div>
         ))}

@@ -1,5 +1,5 @@
 import type { Lang } from "./i18n";
-import type { ChatHistoryItem, ChatIntent, ChatResult } from "./chat-types";
+import type { ChatFormAnswers, ChatHistoryItem, ChatIntent, ChatResult } from "./chat-types";
 
 export type ChatClientOk = { ok: true; result: ChatResult };
 export type ChatClientErr = { ok: false; error: string; code?: string };
@@ -9,6 +9,7 @@ export async function callChat(args: {
   message: string;
   history?: ChatHistoryItem[];
   forcedIntent?: ChatIntent;
+  formAnswers?: ChatFormAnswers;
   signal?: AbortSignal;
 }): Promise<ChatClientOk | ChatClientErr> {
   try {
@@ -20,6 +21,7 @@ export async function callChat(args: {
         message: args.message,
         history: args.history?.slice(-8),
         forcedIntent: args.forcedIntent,
+        formAnswers: args.formAnswers,
       }),
       signal: args.signal,
     });

@@ -46,12 +46,22 @@ export type ChatHistoryItem = {
   kind?: ChatKind;
 };
 
+export type ChatFormField = {
+  id: string;
+  labelKey: string;
+  type: "text" | "textarea" | "number" | "select";
+  optionKeys?: { value: string; labelKey: string }[];
+};
+
+export type ChatFormAnswers = Record<string, string>;
+
 export type ChatResult = {
   kind: ChatKind;
   intent: ChatIntent;
   text: string;
   simpleAnswer?: string;
   followUpQuestion?: string;
+  form?: ChatFormField[];
   nextSteps?: string[];
   disclaimer?: string;
   sources?: { title: string; url: string }[];

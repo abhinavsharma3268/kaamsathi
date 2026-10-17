@@ -22,6 +22,7 @@ const BodySchema = z.object({
     .max(12)
     .optional(),
   forcedIntent: ChatIntentSchema.optional(),
+  formAnswers: z.record(z.string().max(40), z.string().max(2000)).optional(),
 });
 
 export async function POST(req: Request) {
@@ -62,6 +63,7 @@ export async function POST(req: Request) {
         kind: h.kind,
       })),
       forcedIntent: parsed.data.forcedIntent,
+      formAnswers: parsed.data.formAnswers,
     });
     return NextResponse.json({ ok: true, result });
   } catch (err) {

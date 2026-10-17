@@ -1,4 +1,9 @@
-import type { ChatHistoryItem, ChatIntent } from "./chat-types";
+import type {
+  ChatFormAnswers,
+  ChatFormField,
+  ChatHistoryItem,
+  ChatIntent,
+} from "./chat-types";
 import type { Lang } from "./i18n";
 
 /**
@@ -8,11 +13,24 @@ import type { Lang } from "./i18n";
  */
 
 export const PERSONA_PROMPT = `
-Voice: you are "Saath" — a calm, friendly helper who talks like a trusted friend, in first person.
-- Start with ONE short sentence that acknowledges the worker's situation (no long preamble).
-- Then help in short everyday sentences. No jargon, no corporate tone, no "As an AI".
-- Be consistent: same warm, steady tone every time. Never scold or lecture.
-- Ask at most ONE question if something essential is missing; otherwise do not ask.
+Voice: you are "Saath" — a calm friend sitting with an Indian gig or informal worker.
+- Talk about what THEY just said. Use their words (the client, the payment, the road).
+- 2–5 short spoken sentences, first person. No jargon, no "As an AI", no lecture.
+- Never repeat a question you already asked.
+- Do not ask a checklist of questions in the chat. A small form will collect missing details.
+- Never invent laws, eligibility, or phone numbers except official emergencies: 112, 108, 1091.
+`.trim();
+
+export const TALK_PROMPT = `
+You are Saath talking one-to-one with a worker. Reply as if you are texting them.
+Rules:
+- First sentence: show you heard THIS message (name the client, money, tiredness, or whatever they said).
+- Then 1–3 short sentences of comfort or the next idea. Stay on their topic.
+- Do not list options like "a person, the road, or tiredness" if they already answered.
+- Do not ask more than one soft question. Missing facts go in a form, not in your message.
+- If they are in immediate danger, tell them to call 112 / 108 now.
+- Never say a complaint was filed or that they are eligible for a scheme.
+Return JSON only: { "text": string }
 `.trim();
 
 type Phr = Record<Lang, string>;
@@ -129,8 +147,6 @@ export type Thread = {
   asked: number;
 };
 
-const MAX_QUESTIONS = 2;
-
 /**
  * Rebuilds the active thread from history: if Saath's last message was a
  * follow-up question, the worker's new message is an answer in the same topic.
@@ -196,30 +212,82 @@ const WHEN_OR_AMOUNT =
 const WORK_OR_STATE =
   /\b(deliver|driver|driving|rider|cab|auto|construction|mason|labour|labor|domestic|maid|cook|security|guard|factory|farm|plumber|electrician|painter|carpenter|street vendor|hawker|tailor|salon|beautician|delhi|mumbai|maharashtra|punjab|haryana|uttar pradesh|up|bihar|rajasthan|gujarat|karnataka|bengaluru|bangalore|tamil nadu|chennai|kerala|telangana|hyderabad|andhra|west bengal|kolkata|odisha|jharkhand|chhattisgarh|madhya pradesh|mp|assam|goa|uttarakhand|himachal|jammu|chandigarh)\b|डिलीवरी|ड्राइवर|मज़दूर|मजदूर|निर्माण|घरेलू|गार्ड|फैक्ट्री|किसान|दिल्ली|मुंबई|पंजाब|हरियाणा|बिहार|राजस्थान|गुजरात|ਡਿਲੀਵਰੀ|ਡਰਾਈਵਰ|ਮਜ਼ਦੂਰ|ਉਸਾਰੀ|ਘਰੇਲੂ|ਗਾਰਡ|ਪੰਜਾਬ|ਦਿੱਲੀ|ਹਰਿਆਣਾ/i;
 
-/**
- * Returns the ONE clarifying question Saath should ask, or null when enough
- * detail is present (or we've already asked the maximum).
- */
-export function missingDetailQuestion(thread: Thread, lang: Lang): string | null {
-  if (thread.asked >= MAX_QUESTIONS) return null;
-  const f = thread.facts;
-
-  switch (thread.intent) {
+export function formForIntent(intent: ChatIntent): ChatFormField[] | null {
+  switch (intent) {
+    case "safety":
+      return [
+        {
+          id: "safeNow",
+          labelKey: "formSafeNow",
+          type: "select",
+          optionKeys: [
+            { value: "yes", labelKey: "formSafeYes" },
+            { value: "no", labelKey: "formSafeNo" },
+            { value: "unsure", labelKey: "formSafeUnsure" },
+          ],
+        },
+        { id: "whatHappened", labelKey: "formWhat", type: "textarea" },
+        { id: "whoOrWhere", labelKey: "formWhoWhere", type: "text" },
+      ];
     case "grievance":
-    case "complaint_portal": {
-      if (!WHO.test(f)) return phrase("askWho", lang);
-      if (!WHEN_OR_AMOUNT.test(f)) return phrase("askWhenAmount", lang);
-      return null;
-    }
-    case "safety": {
-      return f.trim().length < 60 ? phrase("askSafety", lang) : null;
-    }
-    case "rights": {
-      return f.trim().length < 50 && !WORK_OR_STATE.test(f)
-        ? phrase("askRights", lang)
-        : null;
-    }
+    case "complaint_portal":
+      return [
+        { id: "who", labelKey: "formWho", type: "text" },
+        { id: "when", labelKey: "formWhen", type: "text" },
+        { id: "amount", labelKey: "formAmount", type: "text" },
+        { id: "whatHappened", labelKey: "formWhat", type: "textarea" },
+      ];
+    case "rights":
+      return [
+        { id: "work", labelKey: "formWork", type: "text" },
+        { id: "state", labelKey: "formState", type: "text" },
+      ];
+    case "earnings":
+      return [
+        { id: "gross", labelKey: "formGross", type: "number" },
+        { id: "hours", labelKey: "formHours", type: "number" },
+        { id: "fuel", labelKey: "formFuel", type: "number" },
+        { id: "incentives", labelKey: "formBonus", type: "number" },
+      ];
+    case "documents":
+      return [{ id: "documentText", labelKey: "formDoc", type: "textarea" }];
     default:
       return null;
+  }
+}
+
+export function formatFormAnswers(answers: ChatFormAnswers): string {
+  return Object.entries(answers)
+    .filter(([, v]) => String(v || "").trim())
+    .map(([k, v]) => `${k}: ${String(v).trim()}`)
+    .join("\n");
+}
+
+export function needsDetailForm(args: {
+  intent: ChatIntent;
+  facts: string;
+  asked: number;
+  formSubmitted: boolean;
+  isEmergency: boolean;
+}): boolean {
+  if (args.formSubmitted || args.isEmergency) return false;
+  if (args.asked >= 1) return false;
+  if (!formForIntent(args.intent)) return false;
+  const f = args.facts;
+
+  switch (args.intent) {
+    case "grievance":
+    case "complaint_portal":
+      return !WHO.test(f) || !WHEN_OR_AMOUNT.test(f);
+    case "safety":
+      return f.trim().length < 80;
+    case "rights":
+      return f.trim().length < 50 && !WORK_OR_STATE.test(f);
+    case "earnings":
+      return !/\d/.test(f);
+    case "documents":
+      return f.trim().length < 40 && !/\d/.test(f);
+    default:
+      return false;
   }
 }
