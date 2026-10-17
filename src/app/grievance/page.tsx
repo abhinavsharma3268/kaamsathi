@@ -58,7 +58,7 @@ export default function GrievancePage() {
   async function onGenerate(e: React.FormEvent) {
     e.preventDefault();
     if (!form.issue.trim()) {
-      setError("Please describe what happened.");
+      setError(t("grievanceIssue"));
       return;
     }
     setLoading(true);
@@ -140,7 +140,7 @@ export default function GrievancePage() {
             value={form.issue}
             onChange={(e) => setForm((f) => ({ ...f, issue: e.target.value }))}
             required
-            placeholder="e.g. Payment delayed for 12 days, incentive missing…"
+            placeholder={t("grievanceIssuePh")}
           />
         </label>
         <label>
@@ -149,7 +149,7 @@ export default function GrievancePage() {
             className="ks-input"
             value={form.platform}
             onChange={(e) => setForm((f) => ({ ...f, platform: e.target.value }))}
-            placeholder="e.g. Swiggy / Uber / local contractor"
+            placeholder={t("grievancePlatformPh")}
           />
         </label>
         <label>
@@ -158,7 +158,7 @@ export default function GrievancePage() {
             className="ks-input"
             value={form.dates}
             onChange={(e) => setForm((f) => ({ ...f, dates: e.target.value }))}
-            placeholder="e.g. 1–10 Oct 2026"
+            placeholder={t("grievanceDatesPh")}
           />
         </label>
         <label>
@@ -168,7 +168,7 @@ export default function GrievancePage() {
             value={form.amount}
             onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
             inputMode="decimal"
-            placeholder="e.g. 2450"
+            placeholder={t("grievanceAmountPh")}
           />
         </label>
         <label>
@@ -177,7 +177,7 @@ export default function GrievancePage() {
             className="ks-input"
             value={form.outcome}
             onChange={(e) => setForm((f) => ({ ...f, outcome: e.target.value }))}
-            placeholder="e.g. Release pending payment with breakup"
+            placeholder={t("grievanceOutcomePh")}
           />
         </label>
 
@@ -202,7 +202,7 @@ export default function GrievancePage() {
             <p className="text-sm ks-muted whitespace-pre-wrap">{tip}</p>
           )}
           <label>
-            <span className="ks-label">Draft (editable)</span>
+            <span className="ks-label">{t("grievanceDraftLabel")}</span>
             <textarea
               className="ks-textarea min-h-56"
               value={draft}

@@ -105,9 +105,7 @@ export default function RightsPage() {
 
       <section className="ks-card p-4">
         <h2 className="mb-2 font-bold">{t("sourceLabel")}</h2>
-        <p className="mb-3 text-xs ks-muted">
-          Verifiable portals used as reference. Always confirm on the official site.
-        </p>
+        <p className="mb-3 text-xs ks-muted">{t("rightsSourcesIntro")}</p>
         <ul className="space-y-2">
           {WELFARE_SOURCES.map((s) => (
             <li key={s.id} className="rounded-xl bg-[var(--bg)] p-3 text-sm">

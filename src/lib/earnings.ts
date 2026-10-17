@@ -100,7 +100,7 @@ export function startOfWeek(d: Date): string {
 }
 
 export function validateEarningsInput(input: Partial<EarningsInput>): string | null {
-  if (!input.date) return "Date is required.";
+  if (!input.date) return "Please select a date.";
   const nums = [
     input.gross,
     input.incentives,
@@ -110,10 +110,10 @@ export function validateEarningsInput(input: Partial<EarningsInput>): string | n
     input.otherExpenses,
   ];
   if (nums.some((n) => n === undefined || Number.isNaN(Number(n)))) {
-    return "Please enter valid numbers.";
+    return "Please enter valid numbers in all fields.";
   }
   if (Number(input.hours) < 0 || Number(input.gross) < 0) {
-    return "Hours and gross earnings cannot be negative.";
+    return "Hours worked and gross earnings cannot be negative.";
   }
   if (
     Number(input.incentives) < 0 ||
@@ -121,7 +121,7 @@ export function validateEarningsInput(input: Partial<EarningsInput>): string | n
     Number(input.maintenance) < 0 ||
     Number(input.otherExpenses) < 0
   ) {
-    return "Expense values cannot be negative.";
+    return "Expense amounts cannot be negative.";
   }
   return null;
 }

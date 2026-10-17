@@ -45,22 +45,24 @@ export function isAiConfigured(): boolean {
 }
 
 function languageInstruction(lang: Lang): string {
-  if (lang === "hi") return "Respond entirely in simple Hindi (Devanagari). Use short sentences.";
-  if (lang === "pa") return "Respond entirely in simple Punjabi (Gurmukhi). Use short sentences.";
-  return "Respond entirely in simple English. Use short sentences suitable for limited digital literacy.";
+  if (lang === "hi")
+    return "Respond entirely in clear, professional Hindi (Devanagari). Use short sentences a worker can follow easily.";
+  if (lang === "pa")
+    return "Respond entirely in clear, professional Punjabi (Gurmukhi). Use short sentences a worker can follow easily.";
+  return "Respond entirely in clear, professional English. Use short sentences suitable for limited digital literacy.";
 }
 
 function systemFor(module: AiModule): string {
   const common = `
-You are KaamSaathi, a careful GenAI companion for Indian gig and informal workers
+You are KaamSaathi, a professional work-guidance assistant for Indian gig and informal workers
 (delivery partners, drivers, daily-wage workers).
 
 Rules:
-- Be practical, respectful, and clear.
+- Be practical, respectful, calm, and clear. Avoid slang and exaggerated claims.
 - Never invent laws, eligibility, phone numbers, or document contents.
 - Never claim a benefit is guaranteed.
-- Distinguish facts vs suggestions.
-- If unsure, say you are unsure and suggest checking official sources.
+- Distinguish facts from suggestions.
+- If unsure, say so clearly and suggest checking official sources.
 - Do not give dangerous advice.
 - Return ONLY valid JSON matching the schema described by the user message.
 `.trim();

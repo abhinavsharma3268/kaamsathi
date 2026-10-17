@@ -34,9 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main>{children}</main>
-      <footer className="mt-10 text-center text-xs ks-muted">
-        KaamSaathi · PromptWars warm-up · AI suggestions ≠ legal advice
-      </footer>
+      <footer className="mt-10 text-center text-xs ks-muted">{t("footerNote")}</footer>
     </div>
   );
 }

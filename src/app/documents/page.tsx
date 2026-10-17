@@ -160,7 +160,7 @@ export default function DocumentsPage() {
           </button>
         </div>
         <p className="break-all text-xs ks-muted">
-          Direct PDF path:{" "}
+          {t("docsDirectPath")}:{" "}
           <a
             className="font-semibold text-[var(--brand)] underline"
             href={SAMPLE_PDF}
@@ -189,7 +189,7 @@ export default function DocumentsPage() {
               setText(e.target.value);
               setFileLabel(null);
             }}
-            placeholder="Paste notice / payslip / deduction text here…"
+            placeholder={t("docsPaste")}
           />
         </label>
 
@@ -203,10 +203,7 @@ export default function DocumentsPage() {
           />
         </label>
         {fileLabel && <p className="text-xs font-semibold ks-muted">{fileLabel}</p>}
-        <p className="text-xs ks-muted">
-          Files are processed in your browser / request only for this explanation.
-          Nothing is saved as a document archive.
-        </p>
+        <p className="text-xs ks-muted">{t("docsPrivacy")}</p>
 
         <button
           type="submit"

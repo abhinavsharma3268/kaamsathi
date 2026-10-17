@@ -17,9 +17,9 @@ const body = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "KaamSaathi — Your Work Companion",
+  title: "KaamSaathi — Work guidance for gig workers",
   description:
-    "GenAI companion for Indian gig and informal workers: earnings, safety, rights, documents, and grievance drafting.",
+    "Clear guidance for Indian gig and informal workers: earnings, safety, rights and schemes, documents, and complaint letters.",
 };
 
 export const viewport: Viewport = {

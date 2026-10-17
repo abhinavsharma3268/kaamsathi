@@ -47,7 +47,8 @@ export async function callAi(args: {
   } catch {
     return {
       ok: false,
-      error: "Network error while contacting AI. No fake answer was shown.",
+      error:
+        "Network error while contacting the assistant. No substitute answer was shown.",
       code: "NETWORK",
     };
   }

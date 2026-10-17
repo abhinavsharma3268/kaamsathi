@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     !message?.trim()
   ) {
     return NextResponse.json(
-      { error: "Please enter a question.", code: "EMPTY_MESSAGE" },
+      { error: "Please enter your question.", code: "EMPTY_MESSAGE" },
       { status: 400 },
     );
   }
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     if (!text) {
       return NextResponse.json(
         {
-          error: "No document text was provided to explain.",
+          error: "No document text was provided for explanation.",
           code: "EMPTY_DOCUMENT",
         },
         { status: 400 },
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     const issue = String(payload?.issue ?? "").trim();
     if (!issue) {
       return NextResponse.json(
-        { error: "Please describe what happened.", code: "EMPTY_ISSUE" },
+        { error: "Please describe the issue.", code: "EMPTY_ISSUE" },
         { status: 400 },
       );
     }
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "GEMINI_API_KEY is missing. Add it to .env.local and restart the server.",
+            "Assistant unavailable: GEMINI_API_KEY is not configured on the server.",
           code: "MISSING_API_KEY",
         },
         { status: 503 },
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "The AI service failed. No fabricated answer was generated. Please try again.",
+          "The assistant could not complete this request. No substitute answer was shown. Please try again.",
         code: "AI_FAILED",
         detail: msg,
       },
