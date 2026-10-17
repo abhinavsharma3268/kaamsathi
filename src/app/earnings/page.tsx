@@ -40,13 +40,17 @@ const emptyForm = (): EarningsInput => ({
   workType: "",
 });
 
+type Step = "form" | "saved" | "ai";
+
 export default function EarningsPage() {
   const { t, lang } = useLanguage();
   const { profile } = useProfile();
   const occ = getOccupation(profile.primaryOccupation);
   const labels = occ.expenseLabels;
+  const [step, setStep] = useState<Step>("form");
   const [entries, setEntries] = useState<EarningsEntry[]>([]);
   const [form, setForm] = useState<EarningsInput>(emptyForm);
+  const [lastSaved, setLastSaved] = useState<EarningsEntry | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [aiSimple, setAiSimple] = useState<string | null>(null);
   const [aiNext, setAiNext] = useState<string[]>([]);
@@ -85,7 +89,9 @@ export default function EarningsPage() {
     setError(null);
     const entry = createEntry(form);
     setEntries((prev) => [entry, ...prev]);
+    setLastSaved(entry);
     setForm(emptyForm());
+    setStep("saved");
   }
 
   function onDelete(id: string) {
@@ -141,6 +147,7 @@ export default function EarningsPage() {
     setAiError(null);
     setAiSimple(null);
     setAiNext([]);
+    setStep("ai");
     const weekEntries = entries.slice(0, 14);
     const res = await callAi({
       module: "earnings_explain",
@@ -188,6 +195,8 @@ export default function EarningsPage() {
         {t(occ.earningsHintKey)}
       </p>
 
+      {step === "form" && (
+        <>
       <section className="grid grid-cols-2 gap-3">
         <div className="ks-card p-4">
           <div className="mb-1 flex items-center gap-2">
@@ -321,12 +330,6 @@ export default function EarningsPage() {
         >
           {aiLoading ? t("loading") : t("earningsAiExplain")}
         </button>
-        {aiError && (
-          <p className="text-base font-semibold text-[var(--danger)]">{aiError}</p>
-        )}
-        {aiSimple && (
-          <StructuredAnswer simpleAnswer={aiSimple} nextSteps={aiNext} />
-        )}
       </section>
 
       <section className="ks-card space-y-3 p-4">
@@ -416,6 +419,56 @@ export default function EarningsPage() {
           </ul>
         )}
       </section>
+        </>
+      )}
+
+      {step === "saved" && lastSaved && (
+        <section className="ks-card space-y-3 p-4">
+          <p className="text-base font-semibold text-[var(--ok)]">
+            {t("earningsSave")} ✓
+          </p>
+          <div className="rounded-2xl bg-[var(--brand-soft)] p-4">
+            <p className="font-bold">{lastSaved.date}</p>
+            <p className="text-base">
+              {t("earningsNet")} ₹{lastSaved.net} · {t("earningsPerHour")} ₹
+              {lastSaved.perHour}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="ks-btn ks-btn-secondary min-h-12 w-full text-base"
+            onClick={() => setStep("form")}
+          >
+            {t("back")}
+          </button>
+        </section>
+      )}
+
+      {step === "ai" && (
+        <section className="ks-card space-y-3 p-4">
+          {aiLoading && (
+            <p className="text-base font-semibold text-[var(--brand-deep)]">
+              {t("loading")}
+            </p>
+          )}
+          {aiError && (
+            <p className="text-base font-semibold text-[var(--danger)]">{aiError}</p>
+          )}
+          {!aiLoading && aiSimple && (
+            <StructuredAnswer simpleAnswer={aiSimple} nextSteps={aiNext} />
+          )}
+          <button
+            type="button"
+            className="ks-btn ks-btn-secondary min-h-12 w-full text-base"
+            onClick={() => {
+              setStep("form");
+              setAiError(null);
+            }}
+          >
+            {t("back")}
+          </button>
+        </section>
+      )}
     </div>
   );
 }

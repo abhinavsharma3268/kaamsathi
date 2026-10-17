@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { ComplaintPortalCard } from "@/components/ComplaintPortalCard";
 import { VoiceInput } from "@/components/VoiceInput";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -10,6 +11,20 @@ import type { ComplaintPortalResult } from "@/lib/complaint-router";
 import type { OrganisationType } from "@/lib/complaint-router";
 import { getOccupation } from "@/lib/occupations";
 import Link from "next/link";
+
+function BotBubble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-end gap-2">
+      <span className="mb-1 shrink-0 overflow-hidden rounded-full">
+        <BrandLogo size="xs" className="rounded-full shadow-none" />
+      </span>
+      <div className="min-w-0 flex-1 rounded-2xl rounded-bl-md bg-white px-3 py-2 ring-1 ring-[var(--line)]">
+        <p className="mb-1 text-xs font-bold text-[var(--brand-deep)]">Saath</p>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 const ORG_OPTIONS: { id: OrganisationType; labelKey: string }[] = [
   { id: "gig_platform", labelKey: "cpOrgGig" },
@@ -29,6 +44,7 @@ export default function ComplaintPortalPage() {
   const occLabel = profile.primaryOccupation
     ? t(getOccupation(profile.primaryOccupation).nameKey)
     : "";
+  const topRef = useRef<HTMLDivElement>(null);
 
   const [step, setStep] = useState<Step>("complaint");
   const [complaint, setComplaint] = useState("");
@@ -45,62 +61,114 @@ export default function ComplaintPortalPage() {
   const [followUpAnswer, setFollowUpAnswer] = useState("");
   const [followUpRound, setFollowUpRound] = useState(0);
 
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [step]);
+
   const progress = useMemo(() => {
     if (step === "complaint") return 33;
     if (step === "details") return 66;
     return 100;
   }, [step]);
 
+  const filledRecap = useMemo(() => {
+    const rows: { label: string; value: string }[] = [];
+    if (complaint.trim())
+      rows.push({ label: t("cpWhatHappened"), value: complaint.trim() });
+    if (occupation.trim())
+      rows.push({ label: t("cpOccupation"), value: occupation.trim() });
+    if (state.trim()) rows.push({ label: t("cpState"), value: state.trim() });
+    if (district.trim())
+      rows.push({ label: t("cpDistrict"), value: district.trim() });
+    if (organisationType && organisationType !== "unknown") {
+      const opt = ORG_OPTIONS.find((o) => o.id === organisationType);
+      rows.push({
+        label: t("cpWhoInvolved"),
+        value: opt ? t(opt.labelKey) : organisationType,
+      });
+    }
+    if (organisationName.trim())
+      rows.push({ label: t("cpOrgName"), value: organisationName.trim() });
+    if (contacted === true)
+      rows.push({ label: t("cpContacted"), value: t("cpContactedYes") });
+    if (contacted === false)
+      rows.push({ label: t("cpContacted"), value: t("cpContactedNo") });
+    return rows;
+  }, [
+    complaint,
+    occupation,
+    state,
+    district,
+    organisationType,
+    organisationName,
+    contacted,
+    t,
+  ]);
+
+  function factsBlob() {
+    return filledRecap.map((r) => `${r.label}: ${r.value}`).join("\n");
+  }
+
+  function goTo(next: Step) {
+    setStep(next);
+  }
+
   async function runRoute(extra?: {
     organisationType?: OrganisationType;
     state?: string;
     followUpNote?: string;
-    forceResolve?: boolean;
   }) {
     const text = complaint.trim();
     if (!text) {
       setError(t("cpNeedComplaint"));
+      goTo("result");
       return;
     }
+
+    // Always leave the form page immediately — show the next screen with typing.
     setLoading(true);
     setError(null);
     setResult(null);
+    goTo("result");
 
-    const nextRound = extra?.forceResolve
-      ? Math.max(followUpRound, 1)
-      : followUpRound;
-    const mergedComplaint = extra?.followUpNote
+    const nextRound = Math.max(followUpRound, 1);
+    const base = extra?.followUpNote
       ? `${text}\n\nExtra detail: ${extra.followUpNote}`
       : text;
+    const mergedComplaint = [base, factsBlob()].filter(Boolean).join("\n\n");
 
     if (extra?.followUpNote) {
       setComplaint(mergedComplaint);
       setFollowUpRound(nextRound);
+      setFollowUpAnswer("");
     }
 
-    const res = await callComplaintPortal({
-      lang,
-      facts: {
-        complaint: mergedComplaint,
-        occupation: occupation.trim() || undefined,
-        state: (extra?.state ?? state).trim() || undefined,
-        district: district.trim() || undefined,
-        organisationType: extra?.organisationType ?? organisationType,
-        organisationName: organisationName.trim() || undefined,
-        contactedOrganisation: contacted,
-        forceResolve: Boolean(extra?.forceResolve) || nextRound >= 1,
-        followUpRound: nextRound,
-      },
-    });
-    setLoading(false);
+    try {
+      const res = await callComplaintPortal({
+        lang,
+        facts: {
+          complaint: mergedComplaint,
+          occupation: occupation.trim() || undefined,
+          state: (extra?.state ?? state).trim() || undefined,
+          district: district.trim() || undefined,
+          organisationType: extra?.organisationType ?? organisationType,
+          organisationName: organisationName.trim() || undefined,
+          contactedOrganisation: contacted,
+          forceResolve: true,
+          followUpRound: nextRound,
+        },
+      });
 
-    if (!res.ok) {
-      setError(res.error);
-      setStep("result");
-      return;
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setResult(res);
+    } catch {
+      setError(t("cpNeedComplaint"));
+    } finally {
+      setLoading(false);
     }
-    setResult(res);
-    setStep("result");
   }
 
   function onStartAgain() {
@@ -115,10 +183,11 @@ export default function ComplaintPortalPage() {
     setFollowUpRound(0);
     setResult(null);
     setError(null);
+    setLoading(false);
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" ref={topRef}>
       <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-[var(--brand-deep)]">
         {t("cpTitle")}
       </h1>
@@ -162,7 +231,7 @@ export default function ComplaintPortalPage() {
             type="button"
             className="ks-btn ks-btn-primary min-h-14 w-full text-base"
             disabled={!complaint.trim()}
-            onClick={() => setStep("details")}
+            onClick={() => goTo("details")}
           >
             {t("cpContinue")}
           </button>
@@ -171,6 +240,17 @@ export default function ComplaintPortalPage() {
 
       {step === "details" && (
         <section className="ks-card space-y-3 p-4">
+          <BotBubble>
+            <p className="whitespace-pre-wrap text-base leading-relaxed">
+              {t("cpBotHeard")}
+            </p>
+            {complaint.trim() && (
+              <p className="mt-2 rounded-xl bg-[var(--bg)] px-3 py-2 text-sm">
+                “{complaint.trim().slice(0, 280)}
+                {complaint.trim().length > 280 ? "…" : ""}”
+              </p>
+            )}
+          </BotBubble>
           <p className="text-sm ks-muted">{t("cpOptionalHint")}</p>
           <label>
             <span className="ks-label">{t("cpOccupation")}</span>
@@ -255,7 +335,7 @@ export default function ComplaintPortalPage() {
             <button
               type="button"
               className="ks-btn ks-btn-secondary min-h-14 flex-1 text-base"
-              onClick={() => setStep("complaint")}
+              onClick={() => goTo("complaint")}
             >
               {t("back")}
             </button>
@@ -265,27 +345,64 @@ export default function ComplaintPortalPage() {
               disabled={loading}
               onClick={() => void runRoute()}
             >
-              {loading ? t("loading") : t("cpFindPortal")}
+              {t("cpFindPortal")}
             </button>
           </div>
+          <button
+            type="button"
+            className="w-full text-center text-sm font-semibold text-[var(--brand)] underline"
+            disabled={loading}
+            onClick={() => void runRoute()}
+          >
+            {t("cpSkipToResult")}
+          </button>
         </section>
       )}
 
       {step === "result" && (
         <div className="space-y-4">
+          {filledRecap.length > 0 && (
+            <section className="space-y-2">
+              <p className="text-sm font-bold text-[var(--brand-deep)]">
+                {t("cpYouTold")}
+              </p>
+              {filledRecap.map((row) => (
+                <div key={row.label} className="flex justify-end">
+                  <div className="max-w-[92%] rounded-2xl rounded-br-md bg-[var(--brand)] px-3 py-2 text-white">
+                    <p className="text-xs font-semibold opacity-80">{row.label}</p>
+                    <p className="whitespace-pre-wrap break-words text-base">
+                      {row.value}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
           {loading && (
-            <p className="text-base font-semibold">{t("loading")}</p>
+            <BotBubble>
+              <p className="text-base font-semibold">{t("cpBotWriting")}</p>
+            </BotBubble>
           )}
           {error && (
             <p className="text-base font-semibold text-[var(--danger)]">{error}</p>
           )}
-          {result?.status === "needs_information" && (
+          {!loading && result && result.status !== "needs_information" && (
+            <BotBubble>
+              <p className="whitespace-pre-wrap break-words text-base leading-relaxed">
+                {result.workerReport || result.summary || result.reason}
+              </p>
+            </BotBubble>
+          )}
+          {!loading && result?.status === "needs_information" && (
             <section className="ks-card space-y-3 p-4">
-              <h2 className="text-lg font-bold text-[var(--brand-deep)]">
-                {t("cpNeedMore")}
-              </h2>
-              <p className="text-base">{result.summary}</p>
-              <p className="text-base font-semibold">{result.followUpQuestion}</p>
+              <BotBubble>
+                <p className="text-base font-semibold">
+                  {result.followUpQuestion || t("cpNeedMore")}
+                </p>
+                {result.summary ? (
+                  <p className="mt-1 text-sm ks-muted">{result.summary}</p>
+                ) : null}
+              </BotBubble>
               <textarea
                 className="ks-textarea text-base"
                 value={followUpAnswer}
@@ -300,41 +417,44 @@ export default function ComplaintPortalPage() {
                 onClick={() =>
                   void runRoute({
                     followUpNote: followUpAnswer.trim(),
-                    forceResolve: true,
                   })
                 }
               >
-                {loading ? t("loading") : t("cpContinue")}
+                {t("cpContinue")}
               </button>
             </section>
           )}
-          {result && result.status !== "needs_information" && (
+          {!loading && result && result.status !== "needs_information" && (
             <ComplaintPortalCard
               result={result}
               onNotRight={() => {
-                setStep("details");
                 setResult(null);
+                goTo("details");
               }}
               onMoreHelp={() => {
                 setResult(null);
                 setError(null);
-                setStep("details");
+                goTo("details");
               }}
             />
           )}
-          <button
-            type="button"
-            className="ks-btn ks-btn-secondary min-h-12 w-full text-base"
-            onClick={onStartAgain}
-          >
-            {t("cpStartAgain")}
-          </button>
-          <Link
-            href="/grievance"
-            className="block text-center text-base font-semibold text-[var(--brand)] underline"
-          >
-            {t("cpAlsoLetter")}
-          </Link>
+          {!loading && (
+            <>
+              <button
+                type="button"
+                className="ks-btn ks-btn-secondary min-h-12 w-full text-base"
+                onClick={onStartAgain}
+              >
+                {t("cpStartAgain")}
+              </button>
+              <Link
+                href="/grievance"
+                className="block text-center text-base font-semibold text-[var(--brand)] underline"
+              >
+                {t("cpAlsoLetter")}
+              </Link>
+            </>
+          )}
         </div>
       )}
     </div>

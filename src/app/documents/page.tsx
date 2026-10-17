@@ -57,6 +57,7 @@ const SAMPLE_TXT = "/samples/kaamsaathi-sample-payslip.txt";
 
 export default function DocumentsPage() {
   const { t, lang } = useLanguage();
+  const [step, setStep] = useState<"form" | "result">("form");
   const [text, setText] = useState("");
   const [fileLabel, setFileLabel] = useState<string | null>(null);
   const [simpleAnswer, setSimpleAnswer] = useState<string | null>(null);
@@ -121,6 +122,7 @@ export default function DocumentsPage() {
     setSimpleAnswer(null);
     setNextSteps([]);
     setDisclaimer(null);
+    setStep("result");
 
     const structuredEntities = extractDocumentEntities(trimmed);
     const res = await callAi({
@@ -158,6 +160,8 @@ export default function DocumentsPage() {
       </h1>
       <p className="text-base ks-muted">{t("moduleDocsDesc")}</p>
 
+      {step === "form" && (
+        <>
       <ShowMeHow
         topicId="wage_deductions"
         context={
@@ -294,18 +298,39 @@ export default function DocumentsPage() {
         >
           {loading ? t("loading") : t("docsExplain")}
         </button>
-
-        {error && (
-          <p className="text-base font-semibold text-[var(--danger)]">{error}</p>
-        )}
-        {simpleAnswer && (
-          <StructuredAnswer
-            simpleAnswer={simpleAnswer}
-            nextSteps={nextSteps}
-            disclaimer={disclaimer || undefined}
-          />
-        )}
       </form>
+        </>
+      )}
+
+      {step === "result" && (
+        <section className="ks-card space-y-3 p-4">
+          {loading && (
+            <p className="text-base font-semibold text-[var(--brand-deep)]">
+              {t("loading")}
+            </p>
+          )}
+          {error && (
+            <p className="text-base font-semibold text-[var(--danger)]">{error}</p>
+          )}
+          {!loading && simpleAnswer && (
+            <StructuredAnswer
+              simpleAnswer={simpleAnswer}
+              nextSteps={nextSteps}
+              disclaimer={disclaimer || undefined}
+            />
+          )}
+          <button
+            type="button"
+            className="ks-btn ks-btn-secondary min-h-12 w-full text-base"
+            onClick={() => {
+              setStep("form");
+              setError(null);
+            }}
+          >
+            {t("back")}
+          </button>
+        </section>
+      )}
     </div>
   );
 }

@@ -21,16 +21,7 @@ export function ComplaintPortalCard({
     <div className="ks-card space-y-4 border-l-4 border-l-[var(--brand)] p-4">
       <p className="text-sm font-semibold text-[var(--warn)]">{result.disclaimer}</p>
 
-      {result.workerReport ? (
-        <section className="rounded-2xl bg-[var(--bg)] p-4 ring-1 ring-[var(--line)]">
-          <h2 className="text-lg font-bold text-[var(--brand-deep)]">
-            {t("cpWorkerReport")}
-          </h2>
-          <p className="mt-2 whitespace-pre-wrap text-base leading-relaxed text-[var(--ink)]">
-            {result.workerReport}
-          </p>
-        </section>
-      ) : null}
+      {/* workerReport is shown as the Saath chat bubble on the page */}
 
       {result.isEmergency && (
         <div className="rounded-2xl bg-[var(--accent-soft)] p-4">

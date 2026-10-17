@@ -619,7 +619,7 @@ ${portalDirectoryForPrompt()}
 - If unsure, use status needs_information or manual_assistance.
 - Ask at most ONE short follow-up question, and only on the first pass.
 - When facts.forceResolve is true OR followUpRound >= 1: NEVER use needs_information. Always return recommendation or manual_assistance, plus workerReport and draftedMessage.
-- workerReport: calm, kind, simple words. Reassure the worker. Explain what to do next in 3–5 short sentences. Do not sound scary or legalistic.
+- workerReport: talk like Saath sitting with them. Mention the facts they filled (what happened, occupation, state, organisation name) in everyday words. 3–5 short sentences. Do not sound scary or legalistic.
 - draftedMessage: a short respectful message they can paste to employer/HR or into a portal form. Include what happened in plain words. No threats.
 - Never ask for Aadhaar, bank passwords, or OTPs.
 `.trim();

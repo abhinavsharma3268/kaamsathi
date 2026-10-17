@@ -283,7 +283,18 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
                         .filter(([, v]) => String(v || "").trim())
                         .map(([k, v]) => `${k}: ${v}`)
                         .join("\n");
-                      void send(lines || t("formSubmit"), m.result?.intent, answers);
+                      // Advance the chat immediately: form leaves, reply loads next.
+                      void send(
+                        lines || t("formSubmit"),
+                        m.result?.intent,
+                        answers,
+                      );
+                      requestAnimationFrame(() => {
+                        listRef.current?.scrollTo({
+                          top: listRef.current.scrollHeight,
+                          behavior: "smooth",
+                        });
+                      });
                     }}
                   />
                 )}
