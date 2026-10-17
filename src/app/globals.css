@@ -1,0 +1,172 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f3f6f4;
+  --bg-deep: #e7efe9;
+  --ink: #14201a;
+  --ink-muted: #4a5c52;
+  --brand: #0f6b4c;
+  --brand-deep: #0a4d37;
+  --brand-soft: #d7efe4;
+  --accent: #c45c26;
+  --accent-soft: #f8e6db;
+  --card: #ffffff;
+  --line: #c9d7cf;
+  --danger: #b42318;
+  --warn: #b54708;
+  --ok: #067647;
+  --shadow: 0 10px 30px rgba(20, 32, 26, 0.08);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(15, 107, 76, 0.12), transparent 34%),
+    radial-gradient(circle at top right, rgba(196, 92, 38, 0.1), transparent 28%),
+    linear-gradient(180deg, #f7faf8 0%, var(--bg) 40%, var(--bg-deep) 100%);
+  font-family: var(--font-body), "Noto Sans Devanagari", "Noto Sans Gurmukhi", system-ui, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: var(--brand-soft);
+}
+
+.ks-card {
+  background: color-mix(in srgb, var(--card) 92%, white);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+.ks-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.25rem;
+  padding: 0.85rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.ks-btn:active {
+  transform: scale(0.98);
+}
+
+.ks-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ks-btn-primary {
+  background: var(--brand);
+  color: white;
+}
+
+.ks-btn-primary:hover:not(:disabled) {
+  background: var(--brand-deep);
+}
+
+.ks-btn-secondary {
+  background: white;
+  color: var(--brand-deep);
+  border: 1px solid var(--line);
+}
+
+.ks-btn-danger {
+  background: var(--accent);
+  color: white;
+}
+
+.ks-input,
+.ks-textarea,
+.ks-select {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--ink);
+}
+
+.ks-textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.ks-input:focus,
+.ks-textarea:focus,
+.ks-select:focus {
+  outline: 3px solid color-mix(in srgb, var(--brand) 25%, white);
+  border-color: var(--brand);
+}
+
+.ks-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ks-muted {
+  color: var(--ink-muted);
+}
+
+.ks-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ks-badge-fact {
+  background: #e8f5ee;
+  color: var(--ok);
+}
+
+.ks-badge-ai {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.ks-badge-warn {
+  background: #fff4e5;
+  color: var(--warn);
+}
