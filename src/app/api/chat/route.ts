@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runChatTurn } from "@/lib/chat-orchestrator";
-import { ChatIntentSchema } from "@/lib/chat-types";
+import { ChatIntentSchema, ChatKindSchema } from "@/lib/chat-types";
 import { sanitizeUserText } from "@/lib/prompt-guard";
 
 export const runtime = "nodejs";
@@ -15,6 +15,8 @@ const BodySchema = z.object({
       z.object({
         role: z.enum(["user", "assistant"]),
         content: z.string().max(4000),
+        intent: ChatIntentSchema.optional(),
+        kind: ChatKindSchema.optional(),
       }),
     )
     .max(12)
@@ -56,6 +58,8 @@ export async function POST(req: Request) {
       history: parsed.data.history?.map((h) => ({
         role: h.role,
         content: sanitizeUserText(h.content, 4000),
+        intent: h.intent,
+        kind: h.kind,
       })),
       forcedIntent: parsed.data.forcedIntent,
     });

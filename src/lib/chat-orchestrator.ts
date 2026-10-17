@@ -11,6 +11,14 @@ import {
   type ChatIntent,
   type ChatResult,
 } from "./chat-types";
+import {
+  PERSONA_PROMPT,
+  detectSmallTalk,
+  earningsText,
+  missingDetailQuestion,
+  phrase,
+  resolveThread,
+} from "./chat-persona";
 import { routeComplaintPortal } from "./complaint-router";
 import { computeEarnings } from "./earnings";
 import type { Lang } from "./i18n";
@@ -69,6 +77,7 @@ Return JSON only:
   "followUpQuestion": string (one short question if needsFollowUp),
   "reply": string (only when intent is general — short helpful reply)
 }
+${PERSONA_PROMPT}
 Rules:
 - Prefer complaint_portal when they ask where to file/submit a complaint.
 - Prefer grievance when they want a letter/draft written.
@@ -114,20 +123,14 @@ ${wrapUntrusted("USER_MESSAGE", args.message)}
   return parsed.data;
 }
 
-function earningsFollowUp(lang: Lang): string {
-  if (lang === "hi")
-    return "कमाई जोड़ने के लिए लिखें: कुल कमाई ₹…, बोनस ₹…, घंटे …, पेट्रोल ₹…";
-  if (lang === "pa")
-    return "ਕਮਾਈ ਲਈ ਲਿਖੋ: ਕੁੱਲ ਕਮਾਈ ₹…, ਬੋਨਸ ₹…, ਘੰਟੇ …, ਪੈਟਰੋਲ ₹…";
-  return "To calculate, tell me: gross pay ₹…, bonus ₹…, hours …, fuel ₹…";
-}
-
-function documentsFollowUp(lang: Lang): string {
-  if (lang === "hi")
-    return "पेस्लिप या नोटिस का टेक्स्ट यहाँ पेस्ट करें। मैं आसान भाषा में समझाऊँगा।";
-  if (lang === "pa")
-    return "ਪੇਸਲਿਪ ਜਾਂ ਨੋਟਿਸ ਦਾ ਟੈਕਸਟ ਇੱਥੇ ਪੇਸਟ ਕਰੋ। ਮੈਂ ਸੌਖੀ ਭਾਸ਼ਾ ਵਿੱਚ ਸਮਝਾਵਾਂਗਾ।";
-  return "Paste the payslip or notice text here. I will explain it in simple words.";
+function ask(intent: ChatIntent, question: string, deepLink?: string): ChatResult {
+  return {
+    kind: "follow_up",
+    intent,
+    text: question,
+    followUpQuestion: question,
+    deepLink,
+  };
 }
 
 export async function runChatTurn(args: {
@@ -141,19 +144,37 @@ export async function runChatTurn(args: {
     return {
       kind: "error",
       intent: "general",
-      text: "Please tell me what happened.",
+      text: phrase("emptyMessage", args.lang),
     };
   }
 
   const injection = detectInjection(message);
-  const history = (args.history || []).slice(-6);
+  const history = (args.history || []).slice(-8);
   const local = inferIntentLocal(message);
-  let intent: ChatIntent = args.forcedIntent || local.intent;
-  let followUp: string | undefined;
+
+  // Greetings / thanks: answer in Saath's own voice, no model call.
+  const lastAssistant = [...history].reverse().find((h) => h.role === "assistant");
+  const smallTalk = detectSmallTalk(message);
+  if (!args.forcedIntent && smallTalk && lastAssistant?.kind !== "follow_up") {
+    const text = phrase(smallTalk, args.lang);
+    return { kind: "message", intent: "general", text, simpleAnswer: text };
+  }
+
+  // Which topic are we on? If Saath just asked a question, this is the answer.
+  const thread = resolveThread({
+    history,
+    message,
+    localIntent: local.intent,
+    localConfidence: local.confidence,
+    isEmergency: local.isEmergency,
+    forcedIntent: args.forcedIntent,
+  });
+  let intent: ChatIntent = thread.intent;
+  const continuing = thread.asked > 0;
   let generalReply: string | undefined;
 
-  // Only call Gemini classify when local confidence is low and no forced intent
-  if (!args.forcedIntent && local.confidence === "low") {
+  // Only call Gemini to classify when the topic is genuinely unclear.
+  if (!args.forcedIntent && !continuing && local.confidence === "low") {
     try {
       const classified = await classifyWithGemini({
         lang: args.lang,
@@ -161,41 +182,34 @@ export async function runChatTurn(args: {
         history,
       });
       intent = classified.intent;
-      if (classified.needsFollowUp && classified.followUpQuestion?.trim()) {
-        followUp = classified.followUpQuestion.trim();
-      }
       if (classified.intent === "general" && classified.reply?.trim()) {
         generalReply = classified.reply.trim();
       }
     } catch {
-      // Fall through with local/general
-      intent = local.intent === "general" ? "general" : local.intent;
+      intent = local.intent;
     }
+    thread.intent = intent;
   }
 
   if (local.isEmergency) {
     intent = "safety";
+    thread.intent = "safety";
   }
 
-  if (followUp && intent !== "safety") {
-    return {
-      kind: "follow_up",
-      intent,
-      text: followUp,
-      followUpQuestion: followUp,
-    };
+  // Ask for missing essentials (one question at a time) before doing the work.
+  if (!local.isEmergency) {
+    const question = missingDetailQuestion(thread, args.lang);
+    if (question) return ask(intent, question);
   }
+
+  // Everything the worker has told us in this thread.
+  const facts = sanitizeUserText(thread.facts, 8000);
+  const ack = continuing ? phrase("gotDetails", args.lang) : "";
 
   if (intent === "earnings") {
-    const nums = extractEarningsNumbers(message);
+    const nums = extractEarningsNumbers(facts);
     if (nums.gross == null && nums.hours == null) {
-      return {
-        kind: "follow_up",
-        intent: "earnings",
-        text: earningsFollowUp(args.lang),
-        followUpQuestion: earningsFollowUp(args.lang),
-        deepLink: "/earnings",
-      };
+      return ask("earnings", phrase("askEarnings", args.lang), "/earnings");
     }
     const input = {
       date: new Date().toISOString().slice(0, 10),
@@ -207,12 +221,7 @@ export async function runChatTurn(args: {
       otherExpenses: nums.otherExpenses ?? 0,
     };
     const { net, perHour } = computeEarnings(input);
-    const text =
-      args.lang === "hi"
-        ? `हिसाब (ऐप ने जोड़ा): नेट ₹${net}${input.hours ? ` · ₹${perHour}/घंटा` : ""}. Saath ने यह आंकड़े खुद गिने — अनुमान नहीं।`
-        : args.lang === "pa"
-          ? `ਹਿਸਾਬ (ਐਪ ਨੇ ਜੋੜਿਆ): ਨੈੱਟ ₹${net}${input.hours ? ` · ₹${perHour}/ਘੰਟਾ` : ""}. Saath ਨੇ ਇਹ ਅੰਕ ਖੁਦ ਗਿਣੇ — ਅਨੁਮਾਨ ਨਹੀਂ।`
-          : `Calculated in the app: net ₹${net}${input.hours ? ` · ₹${perHour}/hour` : ""}. These numbers are app math — not a guess.`;
+    const text = ack + earningsText(args.lang, net, perHour, input.hours);
     return {
       kind: "earnings",
       intent: "earnings",
@@ -220,119 +229,131 @@ export async function runChatTurn(args: {
       simpleAnswer: text,
       earnings: { ...input, net, perHour },
       deepLink: "/earnings",
-      nextSteps: [
-        args.lang === "hi"
-          ? "पूरी हिस्ट्री के लिए कमाई पेज खोलें"
-          : args.lang === "pa"
-            ? "ਪੂਰੀ ਹਿਸਟਰੀ ਲਈ ਕਮਾਈ ਪੰਨਾ ਖੋਲ੍ਹੋ"
-            : "Open Earnings to save today’s entry",
-      ],
+      nextSteps: [phrase("earningsStep", args.lang)],
     };
   }
 
   if (intent === "documents") {
     // Need substantial pasted text to explain; otherwise ask
     if (message.length < 40 && !/\d/.test(message)) {
-      return {
-        kind: "follow_up",
-        intent: "documents",
-        text: documentsFollowUp(args.lang),
-        followUpQuestion: documentsFollowUp(args.lang),
-        deepLink: "/documents",
-      };
+      return ask("documents", phrase("askDocument", args.lang), "/documents");
     }
     const docText = sanitizeUserText(message, 6000);
-    const ai = await runAi({
-      module: "documents",
-      lang: args.lang,
-      message: "Explain this work-related document in simple language.",
-      payload: { documentText: docText },
-    });
-    return {
-      kind: "documents",
-      intent: "documents",
-      text: ai.simpleAnswer || ai.answer,
-      simpleAnswer: ai.simpleAnswer,
-      nextSteps: ai.nextSteps,
-      disclaimer: ai.disclaimer,
-      sources: ai.sources,
-      deepLink: "/documents",
-    };
+    try {
+      const ai = await runAi({
+        module: "documents",
+        lang: args.lang,
+        message: "Explain this work-related document in simple language.",
+        payload: { documentText: docText },
+      });
+      return {
+        kind: "documents",
+        intent: "documents",
+        text: ack + (ai.simpleAnswer || ai.answer),
+        simpleAnswer: ai.simpleAnswer,
+        nextSteps: ai.nextSteps,
+        disclaimer: ai.disclaimer,
+        sources: ai.sources,
+        deepLink: "/documents",
+      };
+    } catch {
+      return ask("documents", phrase("askDocument", args.lang), "/documents");
+    }
   }
 
   if (intent === "complaint_portal") {
-    const portal = await routeComplaintPortal({
-      lang: args.lang,
-      facts: {
-        complaint: message,
-        forceResolve: history.some((h) => h.role === "user"),
-        followUpRound: history.filter((h) => h.role === "user").length >= 1 ? 1 : 0,
-      },
-    });
-    if (portal.status === "needs_information" && portal.followUpQuestion) {
+    try {
+      const portal = await routeComplaintPortal({
+        lang: args.lang,
+        facts: {
+          complaint: facts,
+          forceResolve: true,
+          followUpRound: thread.asked,
+        },
+      });
+      if (portal.status === "needs_information" && portal.followUpQuestion) {
+        return ask("complaint_portal", portal.followUpQuestion);
+      }
       return {
-        kind: "follow_up",
+        kind: "portal",
         intent: "complaint_portal",
-        text: portal.followUpQuestion,
-        followUpQuestion: portal.followUpQuestion,
+        text:
+          ack +
+          (portal.workerReport ||
+            portal.summary ||
+            portal.reason ||
+            phrase("portalFallback", args.lang)),
         simpleAnswer: portal.summary,
+        nextSteps: portal.nextSteps,
+        disclaimer: portal.disclaimer,
+        portal,
+        draft: portal.draftedMessage || undefined,
+        deepLink: "/complaint-portal",
+      };
+    } catch {
+      return {
+        kind: "portal",
+        intent: "complaint_portal",
+        text: ack + phrase("portalFallback", args.lang),
+        deepLink: "/complaint-portal",
       };
     }
-    return {
-      kind: "portal",
-      intent: "complaint_portal",
-      text:
-        portal.workerReport ||
-        portal.summary ||
-        portal.reason ||
-        "Here is guidance on official complaint websites.",
-      simpleAnswer: portal.summary,
-      nextSteps: portal.nextSteps,
-      disclaimer: portal.disclaimer,
-      portal,
-      draft: portal.draftedMessage || undefined,
-      deepLink: "/complaint-portal",
-    };
   }
 
   if (intent === "grievance") {
-    const ai = await runAi({
-      module: "grievance",
-      lang: args.lang,
-      message,
-      payload: { issue: message },
-    });
-    return {
-      kind: "grievance",
-      intent: "grievance",
-      text: ai.simpleAnswer || ai.answer,
-      simpleAnswer: ai.simpleAnswer,
-      draft: ai.draft,
-      nextSteps: ai.nextSteps,
-      disclaimer:
-        ai.disclaimer ||
-        "Saath does not send this letter. You can copy and send it yourself.",
-      deepLink: "/grievance",
-    };
+    try {
+      const ai = await runAi({
+        module: "grievance",
+        lang: args.lang,
+        message: facts,
+        payload: { issue: facts },
+      });
+      return {
+        kind: "grievance",
+        intent: "grievance",
+        text: ack + (ai.simpleAnswer || ai.answer),
+        simpleAnswer: ai.simpleAnswer,
+        draft: ai.draft,
+        nextSteps: ai.nextSteps,
+        disclaimer: ai.disclaimer || phrase("grievanceDisclaimer", args.lang),
+        deepLink: "/grievance",
+      };
+    } catch {
+      return {
+        kind: "grievance",
+        intent: "grievance",
+        text: ack + phrase("grievanceDisclaimer", args.lang),
+        deepLink: "/grievance",
+      };
+    }
   }
 
   if (intent === "safety" || intent === "rights") {
-    const ai = await runAi({
-      module: intent,
-      lang: args.lang,
-      message,
-    });
-    return {
-      kind: intent,
-      intent,
-      text: ai.simpleAnswer || ai.answer,
-      simpleAnswer: ai.simpleAnswer,
-      nextSteps: ai.nextSteps,
-      disclaimer: ai.disclaimer,
-      sources: ai.sources,
-      isEmergency: Boolean(ai.isEmergency || local.isEmergency),
-      deepLink: intent === "safety" ? "/safety" : "/rights",
-    };
+    try {
+      const ai = await runAi({
+        module: intent,
+        lang: args.lang,
+        message: facts,
+      });
+      return {
+        kind: intent,
+        intent,
+        text: ack + (ai.simpleAnswer || ai.answer),
+        simpleAnswer: ai.simpleAnswer,
+        nextSteps: ai.nextSteps,
+        disclaimer: ai.disclaimer,
+        sources: ai.sources,
+        isEmergency: Boolean(ai.isEmergency || local.isEmergency),
+        deepLink: intent === "safety" ? "/safety" : "/rights",
+      };
+    } catch {
+      return {
+        kind: intent,
+        intent,
+        text: ack + phrase(intent === "safety" ? "askSafety" : "askRights", args.lang),
+        deepLink: intent === "safety" ? "/safety" : "/rights",
+      };
+    }
   }
 
   // general
@@ -348,18 +369,27 @@ export async function runChatTurn(args: {
     };
   }
 
-  const ai = await runAi({
-    module: "rights",
-    lang: args.lang,
-    message: `The worker said: ${message}. Give short practical next steps. If unclear, ask one follow-up. Do not invent schemes or eligibility.`,
-  });
-  return {
-    kind: "message",
-    intent: "general",
-    text: ai.simpleAnswer || ai.answer,
-    simpleAnswer: ai.simpleAnswer,
-    nextSteps: ai.nextSteps,
-    disclaimer: ai.disclaimer,
-    sources: ai.sources,
-  };
+  try {
+    const ai = await runAi({
+      module: "rights",
+      lang: args.lang,
+      message: `The worker said: ${facts}. Reply as Saath: acknowledge in one line, then give short practical next steps. If something essential is unclear, ask exactly one question. Do not invent schemes or eligibility.`,
+    });
+    return {
+      kind: "message",
+      intent: "general",
+      text: ack + (ai.simpleAnswer || ai.answer),
+      simpleAnswer: ai.simpleAnswer,
+      nextSteps: ai.nextSteps,
+      disclaimer: ai.disclaimer,
+      sources: ai.sources,
+    };
+  } catch {
+    return {
+      kind: "follow_up",
+      intent: "general",
+      text: phrase("emptyMessage", args.lang),
+      followUpQuestion: phrase("emptyMessage", args.lang),
+    };
+  }
 }

@@ -14,6 +14,7 @@ import {
   type HowToTopicId,
 } from "./show-me-how";
 import type { Lang } from "./i18n";
+import { PERSONA_PROMPT } from "./chat-persona";
 import { filterTrustedSources } from "./trusted-links";
 
 export type AiModule =
@@ -103,6 +104,8 @@ Rules:
 - When workerProfile is present, tailor examples to that occupation, but never invent occupation-specific legal rights.
 - If essential facts are missing (dates, amounts, employer/platform), ask one short follow-up question in simpleAnswer or nextSteps.
 
+${PERSONA_PROMPT}
+
 ${PROMPT_INJECTION_POLICY}
 `.trim();
 
@@ -136,7 +139,9 @@ Document helper:
   if (module === "grievance") {
     return `${common}
 Draft a respectful complaint letter/message using ONLY the facts provided by the user.
-Do not claim it was submitted. Put the full editable draft in the "draft" field and a short tip in "answer".`;
+The facts may span several lines (the worker answered questions one by one) — combine them.
+If a detail is still missing, use a clear placeholder like [date] or [amount] in the draft instead of asking again.
+Do not claim it was submitted. Put the full editable draft in the "draft" field and a short friendly tip in "answer".`;
   }
 
   if (module === "show_me_how") {

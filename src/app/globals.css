@@ -146,6 +146,24 @@ select {
   color: var(--ink-muted);
 }
 
+/* Chat typing indicator */
+.saath-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--brand);
+  opacity: 0.35;
+  animation: saath-bounce 1s infinite ease-in-out;
+}
+@keyframes saath-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .saath-dot { animation: none; opacity: 0.7; }
+}
+
 .ks-badge {
   display: inline-flex;
   align-items: center;

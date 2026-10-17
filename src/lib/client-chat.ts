@@ -18,7 +18,7 @@ export async function callChat(args: {
       body: JSON.stringify({
         lang: args.lang,
         message: args.message,
-        history: args.history?.slice(-6),
+        history: args.history?.slice(-8),
         forcedIntent: args.forcedIntent,
       }),
       signal: args.signal,

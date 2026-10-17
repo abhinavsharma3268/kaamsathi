@@ -41,6 +41,9 @@ export type ChatEarningsResult = {
 export type ChatHistoryItem = {
   role: "user" | "assistant";
   content: string;
+  /** For assistant turns: what Saath was doing, so follow-up answers stay on topic. */
+  intent?: ChatIntent;
+  kind?: ChatKind;
 };
 
 export type ChatResult = {

@@ -28,6 +28,14 @@ const STARTERS: { key: string; intent?: ChatIntent }[] = [
   { key: "chatStarterEarnings", intent: "earnings" },
 ];
 
+function SaathAvatar() {
+  return (
+    <span className="mb-1 shrink-0 overflow-hidden rounded-full">
+      <BrandLogo size="xs" className="rounded-full shadow-none" />
+    </span>
+  );
+}
+
 function statusFromResult(kind: string): ChatConversation["status"] {
   if (kind === "grievance" || kind === "portal") return "draft_ready";
   if (kind === "follow_up") return "waiting_user";
@@ -46,6 +54,7 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const closeTools = useCallback(() => setToolsOpen(false), []);
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -100,10 +109,16 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
       const ac = new AbortController();
       abortRef.current = ac;
 
-      const history = pending.slice(0, -1).map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      // Error bubbles are not part of the conversation Saath reasons over.
+      const history = pending
+        .slice(0, -1)
+        .filter((m) => m.result?.kind !== "error")
+        .map((m) => ({
+          role: m.role,
+          content: m.content.slice(0, 4000),
+          intent: m.result?.intent,
+          kind: m.result?.kind,
+        }));
 
       const res = await callChat({
         lang,
@@ -120,10 +135,10 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
         }
         setLoading(false);
         setError(res.error);
-        const errMsg = makeAssistantMessage(res.error, {
+        const errMsg = makeAssistantMessage(t("chatErrorBubble"), {
           kind: "error",
           intent: "general",
-          text: res.error,
+          text: t("chatErrorBubble"),
         });
         const withErr = [...pending, errMsg];
         setMessages(withErr);
@@ -132,7 +147,7 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
       }
 
       const assistant = makeAssistantMessage(
-        res.result.simpleAnswer || res.result.text,
+        res.result.text || res.result.simpleAnswer,
         res.result,
       );
       const next = [...pending, assistant];
@@ -145,8 +160,16 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
         res.result.intent,
       );
     },
-    [convoId, forcedIntent, lang, loading, messages, persist],
+    [convoId, forcedIntent, lang, loading, messages, persist, t],
   );
+
+  // After Saath asks a question, put the cursor back in the box.
+  const lastMsg = messages[messages.length - 1];
+  const awaitingAnswer =
+    !loading && lastMsg?.role === "assistant" && lastMsg.result?.kind === "follow_up";
+  useEffect(() => {
+    if (awaitingAnswer) inputRef.current?.focus();
+  }, [awaitingAnswer]);
 
   function onNewChat() {
     abortRef.current?.abort();
@@ -219,20 +242,16 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
         {messages.map((m) => (
           <div
             key={m.id}
-            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}
           >
+            {m.role === "assistant" && <SaathAvatar />}
             <div
-              className={`max-w-[92%] rounded-2xl px-3 py-2 text-base leading-relaxed ${
+              className={`max-w-[88%] px-3 py-2 text-base leading-relaxed ${
                 m.role === "user"
-                  ? "bg-[var(--brand)] text-white"
-                  : "bg-white text-[var(--ink)] ring-1 ring-[var(--line)]"
+                  ? "rounded-2xl rounded-br-md bg-[var(--brand)] text-white"
+                  : "rounded-2xl rounded-bl-md bg-white text-[var(--ink)] ring-1 ring-[var(--line)]"
               }`}
             >
-              {m.role === "assistant" && (
-                <p className="mb-1 text-xs font-bold text-[var(--brand-deep)]">
-                  Saath
-                </p>
-              )}
               <p className="whitespace-pre-wrap">{m.content}</p>
               {m.result && m.role === "assistant" && (
                 <ChatResultCard result={m.result} />
@@ -242,9 +261,18 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
         ))}
 
         {loading && (
-          <p className="text-sm font-semibold text-[var(--brand-deep)]">
-            {t("chatThinking")}
-          </p>
+          <div className="flex items-end gap-2">
+            <SaathAvatar />
+            <div
+              className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-white px-3 py-2 ring-1 ring-[var(--line)]"
+              aria-label={t("chatThinking")}
+            >
+              <span className="sr-only">{t("chatThinking")}</span>
+              <span className="saath-dot" />
+              <span className="saath-dot" style={{ animationDelay: "0.15s" }} />
+              <span className="saath-dot" style={{ animationDelay: "0.3s" }} />
+            </div>
+          </div>
         )}
       </div>
 
@@ -283,11 +311,12 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
         </label>
         <textarea
           id="saath-chat-input"
+          ref={inputRef}
           className="ks-textarea min-h-12 flex-1 resize-none rounded-2xl py-3 text-base"
           rows={2}
           value={input}
           disabled={loading}
-          placeholder={t("chatPlaceholder")}
+          placeholder={awaitingAnswer ? t("chatAnswerPlaceholder") : t("chatPlaceholder")}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {

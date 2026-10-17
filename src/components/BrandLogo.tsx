@@ -7,12 +7,14 @@ export function BrandLogo({
   priority = false,
   className = "",
 }: {
-  size?: "sm" | "md" | "lg" | "hero";
+  size?: "xs" | "sm" | "md" | "lg" | "hero";
   priority?: boolean;
   className?: string;
 }) {
   const dims =
-    size === "sm"
+    size === "xs"
+      ? { w: 28, h: 28 }
+      : size === "sm"
       ? { w: 40, h: 40 }
       : size === "md"
         ? { w: 56, h: 56 }
