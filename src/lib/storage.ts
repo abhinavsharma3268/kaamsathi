@@ -1,8 +1,14 @@
 import type { EarningsEntry } from "./earnings";
 import type { Lang } from "./i18n";
+import {
+  EMPTY_PROFILE,
+  normalizeProfile,
+  type WorkerProfile,
+} from "./profile";
 
 const EARNINGS_KEY = "kaamsaathi.earnings.v1";
 const LANG_KEY = "kaamsaathi.lang.v1";
+const PROFILE_KEY = "kaamsaathi.profile.v1";
 
 export function loadEarnings(): EarningsEntry[] {
   if (typeof window === "undefined") return [];
@@ -32,4 +38,24 @@ export function loadLang(): Lang {
 export function saveLang(lang: Lang): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(LANG_KEY, lang);
+}
+
+/** Occupation preferences only — no identity documents. */
+export function loadProfile(): WorkerProfile {
+  if (typeof window === "undefined") return { ...EMPTY_PROFILE };
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (!raw) return { ...EMPTY_PROFILE };
+    return normalizeProfile(JSON.parse(raw));
+  } catch {
+    return { ...EMPTY_PROFILE };
+  }
+}
+
+export function saveProfile(profile: WorkerProfile): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(
+    PROFILE_KEY,
+    JSON.stringify(normalizeProfile({ ...profile, updatedAt: new Date().toISOString() })),
+  );
 }

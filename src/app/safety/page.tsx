@@ -1,11 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { AiBadge } from "@/components/Badges";
+import { useEffect, useState } from "react";
+import { QuickActions } from "@/components/QuickActions";
+import { ShowMeHow } from "@/components/ShowMeHow";
+import { StructuredAnswer } from "@/components/StructuredAnswer";
+import { VoiceInput } from "@/components/VoiceInput";
 import { useLanguage } from "@/hooks/useLanguage";
 import { callAi } from "@/lib/client-ai";
+import { consumePrefill } from "@/lib/prefill";
 
-type Msg = { role: "user" | "assistant"; text: string; emergency?: boolean };
+type Msg = {
+  role: "user" | "assistant";
+  text: string;
+  simpleAnswer?: string;
+  nextSteps?: string[];
+  disclaimer?: string;
+  emergency?: boolean;
+};
 
 export default function SafetyPage() {
   const { t, lang } = useLanguage();
@@ -14,10 +25,14 @@ export default function SafetyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function onAsk(e: React.FormEvent) {
-    e.preventDefault();
-    const q = input.trim();
-    if (!q) return;
+  useEffect(() => {
+    const pre = consumePrefill("safety");
+    if (pre?.value) setInput(pre.value);
+  }, []);
+
+  async function ask(question: string) {
+    const q = question.trim();
+    if (!q || loading) return;
     setInput("");
     setError(null);
     setMsgs((m) => [...m, { role: "user", text: q }]);
@@ -39,10 +54,18 @@ export default function SafetyPage() {
       ...m,
       {
         role: "assistant",
-        text: res.answer + (res.disclaimer ? `\n\n${res.disclaimer}` : ""),
+        text: res.answer,
+        simpleAnswer: res.simpleAnswer || res.answer,
+        nextSteps: res.nextSteps,
+        disclaimer: res.disclaimer,
         emergency: Boolean(res.isEmergency),
       },
     ]);
+  }
+
+  async function onAsk(e: React.FormEvent) {
+    e.preventDefault();
+    await ask(input);
   }
 
   return (
@@ -53,56 +76,85 @@ export default function SafetyPage() {
 
       <div className="ks-card border-l-4 border-l-[var(--accent)] bg-[var(--accent-soft)] p-4">
         <p className="font-bold text-[var(--accent)]">{t("emergencyTitle")}</p>
-        <p className="mt-1 text-sm leading-relaxed">{t("emergencyBody")}</p>
+        <p className="mt-1 text-base leading-relaxed">{t("emergencyBody")}</p>
       </div>
 
-      <div className="ks-card min-h-[16rem] space-y-3 p-4">
-        <div className="flex items-center gap-2">
-          <AiBadge />
-          <span className="text-sm ks-muted">{t("moduleSafetyDesc")}</span>
-        </div>
+      <ShowMeHow topicId="safety_guidance" />
 
+      <div className="ks-card space-y-3 p-4">
+        <QuickActions
+          title={t("quickTitle")}
+          actions={[
+            {
+              id: "sleepy",
+              label: t("qaSleepy"),
+              value:
+                "I feel sleepy while driving for work. What should I do right now to stay safe?",
+            },
+            {
+              id: "accident",
+              label: t("qaAccident"),
+              value:
+                "I had a small accident while working. What immediate safety steps should I take?",
+            },
+          ]}
+          onSelect={(value) => {
+            setInput(value);
+            void ask(value);
+          }}
+        />
+      </div>
+
+      <div className="ks-card min-h-[12rem] space-y-3 p-4">
         {msgs.length === 0 && (
-          <p className="text-sm ks-muted">{t("safetyPlaceholder")}</p>
+          <p className="text-base ks-muted">{t("safetyPlaceholder")}</p>
         )}
 
         <div className="space-y-3">
-          {msgs.map((m, i) => (
-            <div
-              key={`${m.role}-${i}`}
-              className={`rounded-2xl p-3 text-sm leading-relaxed ${
-                m.role === "user"
-                  ? "ml-6 bg-[var(--brand-soft)]"
-                  : "mr-2 bg-white ring-1 ring-[var(--line)]"
-              } ${m.emergency ? "ring-2 ring-[var(--accent)]" : ""}`}
-            >
-              {m.emergency && (
-                <p className="mb-2 font-bold text-[var(--accent)]">
-                  {t("emergencyTitle")}
-                </p>
-              )}
-              <p className="whitespace-pre-wrap">{m.text}</p>
-            </div>
-          ))}
+          {msgs.map((m, i) =>
+            m.role === "user" ? (
+              <div
+                key={`u-${i}`}
+                className="ml-4 rounded-2xl bg-[var(--brand-soft)] p-3 text-base leading-relaxed"
+              >
+                <p className="whitespace-pre-wrap">{m.text}</p>
+              </div>
+            ) : (
+              <StructuredAnswer
+                key={`a-${i}`}
+                simpleAnswer={m.simpleAnswer}
+                nextSteps={m.nextSteps}
+                disclaimer={m.disclaimer}
+                emergency={m.emergency}
+                fallbackText={m.text}
+              />
+            ),
+          )}
         </div>
 
-        {loading && <p className="text-sm font-semibold">{t("loading")}</p>}
+        {loading && <p className="text-base font-semibold">{t("loading")}</p>}
         {error && (
-          <p className="text-sm font-semibold text-[var(--danger)]">{error}</p>
+          <p className="text-base font-semibold text-[var(--danger)]">{error}</p>
         )}
       </div>
 
       <form onSubmit={onAsk} className="space-y-3">
         <textarea
-          className="ks-textarea"
+          className="ks-textarea text-base"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={t("safetyPlaceholder")}
           rows={3}
         />
+        <VoiceInput
+          disabled={loading}
+          onTranscript={(text) =>
+            setInput((prev) => (prev ? `${prev.trim()} ${text}` : text))
+          }
+        />
         <button
           type="submit"
-          className="ks-btn ks-btn-primary w-full"
+          className="ks-btn ks-btn-primary min-h-14 w-full text-base"
           disabled={loading || !input.trim()}
         >
           {loading ? t("loading") : t("safetySend")}

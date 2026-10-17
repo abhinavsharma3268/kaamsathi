@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400" role="img" aria-labelledby="title desc">
+  <title id="title">How to check a government scheme</title>
+  <desc id="desc">Checklist diagram: official website, documents ready, do not assume eligibility.</desc>
+  <rect width="640" height="400" fill="#f4f7f5"/>
+  <text x="40" y="48" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#1f5c45">Check a scheme safely</text>
+  <rect x="40" y="76" width="560" height="64" rx="12" fill="#ffffff" stroke="#1f5c45" stroke-width="2"/>
+  <text x="60" y="116" font-family="Arial, sans-serif" font-size="17" fill="#123528">1. Open the official website only</text>
+  <rect x="40" y="156" width="560" height="64" rx="12" fill="#ffffff" stroke="#1f5c45" stroke-width="2"/>
+  <text x="60" y="196" font-family="Arial, sans-serif" font-size="17" fill="#123528">2. Keep Aadhaar / phone / bank details ready</text>
+  <rect x="40" y="236" width="560" height="64" rx="12" fill="#ffffff" stroke="#1f5c45" stroke-width="2"/>
+  <text x="60" y="276" font-family="Arial, sans-serif" font-size="17" fill="#123528">3. Read eligibility on that site  do not guess</text>
+  <rect x="40" y="316" width="560" height="52" rx="12" fill="#fff3cd" stroke="#b45309" stroke-width="2"/>
+  <text x="60" y="348" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#5c2e14">KaamSaathi cannot promise you will get a benefit</text>
+</svg>

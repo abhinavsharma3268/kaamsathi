@@ -7,6 +7,10 @@ export type EarningsInput = {
   maintenance: number;
   otherExpenses: number;
   notes?: string;
+  /** Optional — e.g. platform, household, contractor (local only) */
+  employer?: string;
+  /** Optional — shift / work type label */
+  workType?: string;
 };
 
 export type EarningsEntry = EarningsInput & {
@@ -47,6 +51,8 @@ export function createEntry(input: EarningsInput): EarningsEntry {
     maintenance: Number(input.maintenance) || 0,
     otherExpenses: Number(input.otherExpenses) || 0,
     notes: input.notes?.trim() || "",
+    employer: input.employer?.trim() || "",
+    workType: input.workType?.trim() || "",
     id: crypto.randomUUID(),
     net,
     perHour,

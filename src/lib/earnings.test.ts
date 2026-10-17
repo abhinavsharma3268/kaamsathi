@@ -24,6 +24,34 @@ describe("earnings calculations", () => {
     expect(calc.perHour).toBe(125);
   });
 
+  it("keeps deterministic math when optional employer/workType are present", () => {
+    const entry = createEntry({
+      date: "2026-10-17",
+      gross: 800,
+      incentives: 0,
+      hours: 4,
+      fuel: 100,
+      maintenance: 0,
+      otherExpenses: 0,
+      employer: "Site A",
+      workType: "Helper",
+    });
+    expect(entry.net).toBe(700);
+    expect(entry.perHour).toBe(175);
+    expect(entry.employer).toBe("Site A");
+    // Legacy-shaped records without employer still compute
+    const legacy = computeEarnings({
+      date: "2026-10-17",
+      gross: 800,
+      incentives: 0,
+      hours: 4,
+      fuel: 100,
+      maintenance: 0,
+      otherExpenses: 0,
+    });
+    expect(legacy.net).toBe(700);
+  });
+
   it("returns 0 per-hour when hours are zero", () => {
     const calc = computeEarnings({
       date: "2026-10-17",

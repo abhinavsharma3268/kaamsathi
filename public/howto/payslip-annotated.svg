@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400" role="img" aria-labelledby="title desc">
+  <title id="title">Sample payslip with labels</title>
+  <desc id="desc">A simple diagram of a payslip showing gross pay, deductions, and net pay. Example numbers only.</desc>
+  <rect width="640" height="400" fill="#f4f7f5"/>
+  <rect x="40" y="36" width="560" height="328" rx="16" fill="#ffffff" stroke="#1f5c45" stroke-width="2"/>
+  <text x="60" y="78" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#1f5c45">Payment paper (example)</text>
+  <text x="60" y="108" font-family="Arial, sans-serif" font-size="14" fill="#5a6b63">Not a real payslip  labels only</text>
+  <rect x="60" y="130" width="320" height="44" rx="8" fill="#d7efe4"/>
+  <text x="76" y="158" font-family="Arial, sans-serif" font-size="16" fill="#123528">1. Money earned (gross)</text>
+  <rect x="60" y="188" width="320" height="44" rx="8" fill="#f8e6db"/>
+  <text x="76" y="216" font-family="Arial, sans-serif" font-size="16" fill="#5c2e14">2. Money cut (deductions)</text>
+  <rect x="60" y="246" width="320" height="44" rx="8" fill="#e8f0fe"/>
+  <text x="76" y="274" font-family="Arial, sans-serif" font-size="16" fill="#1a3a6b">3. Money you get (net)</text>
+  <path d="M400 152 H520" stroke="#1f5c45" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="528" y="158" font-family="Arial, sans-serif" font-size="13" fill="#1f5c45">Check this</text>
+  <path d="M400 210 H520" stroke="#b45309" stroke-width="2"/>
+  <text x="528" y="216" font-family="Arial, sans-serif" font-size="13" fill="#b45309">Ask why</text>
+  <path d="M400 268 H520" stroke="#1a3a6b" stroke-width="2"/>
+  <text x="528" y="274" font-family="Arial, sans-serif" font-size="13" fill="#1a3a6b">Final pay</text>
+  <text x="60" y="330" font-family="Arial, sans-serif" font-size="13" fill="#5a6b63">Keep a screenshot or photo of your real payment paper.</text>
+</svg>

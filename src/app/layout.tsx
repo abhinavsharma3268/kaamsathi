@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import { LanguageProvider } from "@/hooks/useLanguage";
+import { ProfileProvider } from "@/hooks/useProfile";
 import { AppShell } from "@/components/AppShell";
 import "./globals.css";
 
@@ -35,7 +36,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${display.variable} ${body.variable} antialiased`}>
         <LanguageProvider>
-          <AppShell>{children}</AppShell>
+          <ProfileProvider>
+            <AppShell>{children}</AppShell>
+          </ProfileProvider>
         </LanguageProvider>
       </body>
     </html>

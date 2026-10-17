@@ -34,7 +34,15 @@ Coverage includes:
 - i18n EN/HI/PA (`src/lib/i18n.test.ts`)
 - Mocked Gemini `runAi` integration (`src/lib/ai.test.ts`)
 - `/api/ai` request validation (`src/app/api/ai/route.test.ts`)
+- Document entity extraction (`src/lib/document-extract.test.ts`)
+- Prompt-injection guards (`src/lib/prompt-guard.test.ts`)
+- Sync pack merge/export (`src/lib/sync.test.ts`)
 - UI components: `CopyButton`, `ModuleCard`
+
+### Data persistence
+- **Default:** local-first (`localStorage`) for privacy on shared phones.
+- **Cross-device:** Export / Import JSON backup from Earnings.
+- **Optional cloud:** set `KAAMSAATHI_SYNC_URL` (+ optional `KAAMSAATHI_SYNC_TOKEN`) to enable push/pull via `/api/sync`.
 
 
 Open [http://localhost:3000](http://localhost:3000)

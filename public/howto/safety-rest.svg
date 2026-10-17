@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400" role="img" aria-labelledby="title desc">
+  <title id="title">Safety when tired while driving</title>
+  <desc id="desc">Three safety actions: stop safely, rest, call emergency if hurt. Not a substitute for official emergency help.</desc>
+  <rect width="640" height="400" fill="#f4f7f5"/>
+  <text x="40" y="48" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#1f5c45">If you feel sleepy at work</text>
+  <rect x="40" y="80" width="170" height="200" rx="14" fill="#ffffff" stroke="#1f5c45" stroke-width="2"/>
+  <circle cx="125" cy="130" r="28" fill="#e8f0fe"/>
+  <text x="112" y="138" font-family="Arial, sans-serif" font-size="24" fill="#1a3a6b">1</text>
+  <text x="70" y="190" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#123528">Stop safely</text>
+  <text x="58" y="220" font-family="Arial, sans-serif" font-size="13" fill="#5a6b63">Side of road,</text>
+  <text x="58" y="238" font-family="Arial, sans-serif" font-size="13" fill="#5a6b63">lights on</text>
+  <rect x="235" y="80" width="170" height="200" rx="14" fill="#ffffff" stroke="#1f5c45" stroke-width="2"/>
+  <circle cx="320" cy="130" r="28" fill="#d7efe4"/>
+  <text x="307" y="138" font-family="Arial, sans-serif" font-size="24" fill="#1f5c45">2</text>
+  <text x="275" y="190" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#123528">Rest / sleep</text>
+  <text x="255" y="220" font-family="Arial, sans-serif" font-size="13" fill="#5a6b63">Do not force</text>
+  <text x="255" y="238" font-family="Arial, sans-serif" font-size="13" fill="#5a6b63">another trip</text>
+  <rect x="430" y="80" width="170" height="200" rx="14" fill="#ffffff" stroke="#b45309" stroke-width="2"/>
+  <circle cx="515" cy="130" r="28" fill="#f8e6db"/>
+  <text x="502" y="138" font-family="Arial, sans-serif" font-size="24" fill="#b45309">3</text>
+  <text x="468" y="190" font-family="Arial, sans-serif" font-size="15" font-weight="700" fill="#5c2e14">If hurt, call</text>
+  <text x="455" y="220" font-family="Arial, sans-serif" font-size="13" fill="#5a6b63">112 / 100</text>
+  <text x="455" y="238" font-family="Arial, sans-serif" font-size="13" fill="#5a6b63">Ambulance 108</text>
+  <rect x="40" y="304" width="560" height="60" rx="12" fill="#fff3cd" stroke="#b45309" stroke-width="2"/>
+  <text x="60" y="340" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#5c2e14">This picture is guidance only  in danger, call emergency numbers first.</text>
+</svg>

@@ -67,4 +67,33 @@ describe("runAi integration (mocked Gemini)", () => {
       runAi({ module: "rights", lang: "en", message: "What is e-Shram?" }),
     ).rejects.toThrow();
   });
+
+  it("filters invented Show Me How visual IDs and fills topic defaults", async () => {
+    generateContent.mockResolvedValue({
+      response: {
+        text: () =>
+          JSON.stringify({
+            answer: "Open the official portal and check eligibility there.",
+            explanation: "Open the official portal and check eligibility there.",
+            steps: ["Open e-Shram", "Read the site carefully"],
+            materials: ["Aadhaar", "Phone"],
+            warnings: ["Do not assume you qualify"],
+            nextAction: "Open an official link below",
+            visualIds: ["welfare-check", "invented-remote-image"],
+          }),
+      },
+    });
+
+    const { runAi } = await import("./ai");
+    const result = await runAi({
+      module: "show_me_how",
+      lang: "en",
+      message: "Show me how to check schemes",
+      payload: { topicId: "welfare_schemes" },
+    });
+
+    expect(result.visualIds).toEqual(["welfare-check"]);
+    expect(result.explanation).toMatch(/official portal/i);
+    expect(result.steps?.length).toBeGreaterThan(0);
+  });
 });

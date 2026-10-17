@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400" role="img" aria-labelledby="title desc">
+  <title id="title">Complaint letter steps</title>
+  <desc id="desc">Four numbered boxes: write facts, check letter, copy or email, you press send.</desc>
+  <rect width="640" height="400" fill="#f4f7f5"/>
+  <text x="40" y="48" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#1f5c45">Write a complaint  steps</text>
+  <g>
+    <rect x="40" y="80" width="260" height="120" rx="14" fill="#ffffff" stroke="#1f5c45" stroke-width="2"/>
+    <circle cx="72" cy="112" r="18" fill="#1f5c45"/>
+    <text x="66" y="118" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">1</text>
+    <text x="100" y="118" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#123528">Write what happened</text>
+    <text x="56" y="152" font-family="Arial, sans-serif" font-size="14" fill="#5a6b63">Dates, amount, app name</text>
+  </g>
+  <g>
+    <rect x="340" y="80" width="260" height="120" rx="14" fill="#ffffff" stroke="#1f5c45" stroke-width="2"/>
+    <circle cx="372" cy="112" r="18" fill="#1f5c45"/>
+    <text x="366" y="118" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">2</text>
+    <text x="400" y="118" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#123528">Read the letter</text>
+    <text x="356" y="152" font-family="Arial, sans-serif" font-size="14" fill="#5a6b63">Fix any wrong words</text>
+  </g>
+  <g>
+    <rect x="40" y="230" width="260" height="120" rx="14" fill="#ffffff" stroke="#1f5c45" stroke-width="2"/>
+    <circle cx="72" cy="262" r="18" fill="#1f5c45"/>
+    <text x="66" y="268" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">3</text>
+    <text x="100" y="268" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#123528">Copy or open email</text>
+    <text x="56" y="302" font-family="Arial, sans-serif" font-size="14" fill="#5a6b63">Use your phone mail app</text>
+  </g>
+  <g>
+    <rect x="340" y="230" width="260" height="120" rx="14" fill="#ffffff" stroke="#b45309" stroke-width="2"/>
+    <circle cx="372" cy="262" r="18" fill="#b45309"/>
+    <text x="366" y="268" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff">4</text>
+    <text x="400" y="268" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#5c2e14">You press Send</text>
+    <text x="356" y="302" font-family="Arial, sans-serif" font-size="14" fill="#5a6b63">KaamSaathi does not send it</text>
+  </g>
+</svg>
