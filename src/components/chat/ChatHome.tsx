@@ -344,9 +344,12 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
         <VoiceInput
           compact
           disabled={loading}
-          onTranscript={(text) =>
-            setInput((prev) => (prev ? `${prev.trim()} ${text}` : text))
-          }
+          onTranscript={(text) => {
+            const next = text.trim();
+            if (!next) return;
+            // Speak → send immediately so voice assistance feels like a reply loop.
+            void send(next);
+          }}
         />
         <label className="sr-only" htmlFor="saath-chat-input">
           {t("chatInputLabel")}

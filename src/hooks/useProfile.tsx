@@ -29,7 +29,6 @@ type Ctx = {
   updatePersonal: (patch: {
     displayName?: string;
     gender?: GenderId | null;
-    photoDataUrl?: string | null;
   }) => void;
   clearProfile: () => void;
 };
@@ -52,7 +51,6 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       skipped: next.skipped,
       displayName: next.displayName,
       gender: next.gender,
-      photoDataUrl: next.photoDataUrl,
     });
     setProfile(normalized);
     saveProfile(normalized);
@@ -90,17 +88,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     (patch: {
       displayName?: string;
       gender?: GenderId | null;
-      photoDataUrl?: string | null;
     }) => {
       persist({
         ...profile,
         displayName:
           patch.displayName !== undefined ? patch.displayName : profile.displayName,
         gender: patch.gender !== undefined ? patch.gender : profile.gender,
-        photoDataUrl:
-          patch.photoDataUrl !== undefined
-            ? patch.photoDataUrl
-            : profile.photoDataUrl,
       });
     },
     [persist, profile],

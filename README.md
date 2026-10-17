@@ -83,6 +83,8 @@ GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-flash-latest
 ```
 
+The mic on each form and on chat turns speech into text. Saath still answers in the chat.
+
 ## Pitch (60 seconds)
 
 **Problem:** Gig workers juggle opaque payouts, safety risks, confusing notices, and weak access to rights info — often with limited digital literacy.

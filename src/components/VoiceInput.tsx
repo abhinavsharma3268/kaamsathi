@@ -4,13 +4,23 @@ import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { Lang } from "@/lib/i18n";
 
+function speechLang(lang: Lang): string {
+  if (lang === "hi") return "hi-IN";
+  if (lang === "pa") return "pa-IN";
+  return "en-IN";
+}
+
 type SpeechRecognitionLike = {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
+  maxAlternatives?: number;
   start: () => void;
   stop: () => void;
-  onresult: ((event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void) | null;
+  abort?: () => void;
+  onresult: ((event: {
+    results: ArrayLike<{ 0: { transcript: string }; isFinal?: boolean }>;
+  }) => void) | null;
   onerror: ((event: { error: string }) => void) | null;
   onend: (() => void) | null;
 };
@@ -24,10 +34,15 @@ function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
-function speechLang(lang: Lang): string {
-  if (lang === "hi") return "hi-IN";
-  if (lang === "pa") return "pa-IN";
-  return "en-IN";
+async function warmMic(): Promise<boolean> {
+  if (!navigator.mediaDevices?.getUserMedia) return true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((t) => t.stop());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function VoiceInput({
@@ -44,6 +59,9 @@ export function VoiceInput({
   const [listening, setListening] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const recRef = useRef<SpeechRecognitionLike | null>(null);
+  const stoppingRef = useRef(false);
+  const langRef = useRef<Lang>(lang);
+  langRef.current = lang;
 
   useEffect(() => {
     setSupported(Boolean(getSpeechRecognition()));
@@ -51,15 +69,27 @@ export function VoiceInput({
 
   useEffect(() => {
     return () => {
+      stoppingRef.current = true;
       try {
-        recRef.current?.stop();
+        if (recRef.current?.abort) recRef.current.abort();
+        else recRef.current?.stop();
       } catch {
         /* ignore */
       }
     };
   }, []);
 
-  function toggle() {
+  function stopRec() {
+    stoppingRef.current = true;
+    try {
+      recRef.current?.stop();
+    } catch {
+      /* ignore */
+    }
+    setListening(false);
+  }
+
+  async function toggle() {
     if (disabled) return;
     const Ctor = getSpeechRecognition();
     if (!Ctor) {
@@ -69,37 +99,64 @@ export function VoiceInput({
     }
 
     if (listening) {
-      recRef.current?.stop();
-      setListening(false);
+      stopRec();
+      setStatus(null);
       return;
     }
 
+    setStatus(t("voiceListening"));
+    const allowed = await warmMic();
+    if (!allowed) {
+      setStatus(t("voiceDenied"));
+      return;
+    }
+
+    stoppingRef.current = false;
     const rec = new Ctor();
     recRef.current = rec;
-    rec.lang = speechLang(lang);
+    rec.lang = speechLang(langRef.current);
     rec.continuous = false;
-    rec.interimResults = false;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+
     rec.onresult = (event) => {
-      const text = event.results[0]?.[0]?.transcript?.trim();
-      if (text) onTranscript(text);
+      const last = event.results[event.results.length - 1];
+      const text = last?.[0]?.transcript?.trim();
+      if (!text) return;
+      if (last.isFinal === false) {
+        setStatus(text);
+        return;
+      }
+      onTranscript(text);
       setStatus(null);
+      stopRec();
     };
+
     rec.onerror = (event) => {
+      // Aborts from our own stop() are not real failures.
+      if (stoppingRef.current || event.error === "aborted") {
+        setListening(false);
+        return;
+      }
       setListening(false);
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
         setStatus(t("voiceDenied"));
       } else if (event.error === "no-speech") {
         setStatus(t("voiceNoSpeech"));
+      } else if (event.error === "network") {
+        setStatus(t("voiceNetwork"));
       } else {
         setStatus(t("voiceError"));
       }
     };
-    rec.onend = () => setListening(false);
+
+    rec.onend = () => {
+      setListening(false);
+    };
 
     try {
       rec.start();
       setListening(true);
-      setStatus(t("voiceListening"));
     } catch {
       setListening(false);
       setStatus(t("voiceError"));
@@ -120,7 +177,7 @@ export function VoiceInput({
         className={`ks-btn h-12 w-12 shrink-0 rounded-full p-0 text-lg ${
           listening ? "ks-btn-danger" : "ks-btn-secondary"
         }`}
-        onClick={toggle}
+        onClick={() => void toggle()}
         disabled={disabled || supported === null}
         aria-pressed={listening}
         aria-label={listening ? t("voiceStop") : t("voiceStart")}
@@ -138,7 +195,7 @@ export function VoiceInput({
         className={`ks-btn min-h-14 w-full rounded-2xl text-base ${
           listening ? "ks-btn-danger" : "ks-btn-secondary"
         }`}
-        onClick={toggle}
+        onClick={() => void toggle()}
         disabled={disabled || supported === null}
         aria-pressed={listening}
       >

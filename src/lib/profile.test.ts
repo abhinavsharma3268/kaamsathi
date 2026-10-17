@@ -37,26 +37,22 @@ describe("worker profile", () => {
     ).toBe(false);
   });
 
-  it("keeps local name, gender, and small photo data", () => {
+  it("keeps local name and gender", () => {
     const profile = normalizeProfile({
       primaryOccupation: "delivery",
       displayName: "  Ravi Kumar  ",
       gender: "man",
-      photoDataUrl: "data:image/jpeg;base64,abc",
     });
     expect(profile.displayName).toBe("Ravi Kumar");
     expect(profile.gender).toBe("man");
-    expect(profile.photoDataUrl).toBe("data:image/jpeg;base64,abc");
   });
 
-  it("rejects invalid gender and non-image photo payloads", () => {
+  it("rejects invalid gender and caps the name", () => {
     const profile = normalizeProfile({
       displayName: "x".repeat(80),
       gender: "alien",
-      photoDataUrl: "https://evil.example/x.jpg",
     });
     expect(profile.displayName.length).toBe(60);
     expect(profile.gender).toBeNull();
-    expect(profile.photoDataUrl).toBeNull();
   });
 });
