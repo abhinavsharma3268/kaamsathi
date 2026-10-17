@@ -17,7 +17,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showCompactHeader = isHome || isSupport || isProfile;
 
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-lg px-4 pb-24 pt-4 sm:max-w-2xl">
+    <div
+      className={`mx-auto min-h-dvh w-full max-w-lg px-4 pb-24 pt-4 sm:max-w-2xl ${
+        isHome ? "lg:max-w-5xl" : ""
+      }`}
+    >
       <header className="mb-4 space-y-2">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

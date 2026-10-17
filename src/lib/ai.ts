@@ -14,6 +14,7 @@ import {
   type HowToTopicId,
 } from "./show-me-how";
 import type { Lang } from "./i18n";
+import { filterTrustedSources } from "./trusted-links";
 
 export type AiModule =
   | "earnings_explain"
@@ -30,30 +31,38 @@ export type AiRequest = {
   payload?: Record<string, unknown>;
 };
 
+/** Hard caps on model output so a runaway response cannot bloat UI or storage. */
+const SHORT = z.string().max(2000);
+const LIST = z.array(z.string().max(600)).max(12);
+
 const ResponseSchema = z.object({
-  answer: z.string().min(1),
-  simpleAnswer: z.string().optional(),
-  nextSteps: z.array(z.string()).optional(),
-  disclaimer: z.string().optional(),
+  answer: z.string().min(1).max(8000),
+  simpleAnswer: SHORT.optional(),
+  nextSteps: LIST.optional(),
+  disclaimer: SHORT.optional(),
   sources: z
     .array(
       z.object({
-        title: z.string(),
-        url: z.string().url().or(z.string().startsWith("https://")),
+        title: z.string().max(200),
+        url: z.string().url().max(500),
       }),
     )
+    .max(12)
     .optional(),
   isEmergency: z.boolean().optional(),
-  draft: z.string().optional(),
+  draft: z.string().max(8000).optional(),
   /** Show Me How structured fields */
-  explanation: z.string().optional(),
-  steps: z.array(z.string()).optional(),
-  materials: z.array(z.string()).optional(),
-  warnings: z.array(z.string()).optional(),
-  nextAction: z.string().optional(),
+  explanation: SHORT.optional(),
+  steps: LIST.optional(),
+  materials: LIST.optional(),
+  warnings: LIST.optional(),
+  nextAction: SHORT.optional(),
   /** Must be IDs from the curated HOWTO_VISUALS allowlist only */
-  visualIds: z.array(z.string()).optional(),
+  visualIds: z.array(z.string().max(80)).max(8).optional(),
 });
+
+/** Provider timeout (ms). Routes map AI_TIMEOUT → 504. */
+export const GEMINI_TIMEOUT_MS = 25_000;
 
 export type AiStructured = z.infer<typeof ResponseSchema>;
 
@@ -188,10 +197,14 @@ function buildUserPrompt(req: AiRequest): string {
 
   const payload = req.payload ? { ...req.payload } : undefined;
   if (payload && typeof payload.documentText === "string") {
-    payload.documentText = sanitizeUserText(String(payload.documentText));
+    // Keep document context bounded to limit tokens and exposure.
+    payload.documentText = sanitizeUserText(String(payload.documentText), 8000);
   }
   if (payload && typeof payload.issue === "string") {
     payload.issue = sanitizeUserText(String(payload.issue), 4000);
+  }
+  if (payload && typeof payload.documentPreview === "string") {
+    payload.documentPreview = sanitizeUserText(String(payload.documentPreview), 1500);
   }
 
   const parts = [
@@ -250,26 +263,47 @@ export async function runAi(req: AiRequest): Promise<AiStructured> {
     },
   });
 
-  const result = await generativeModel.generateContent({
-    contents: [
+  let result;
+  try {
+    result = await generativeModel.generateContent(
       {
-        role: "user",
-        parts: [{ text: `${systemFor(req.module)}\n\n${buildUserPrompt(req)}` }],
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: `${systemFor(req.module)}\n\n${buildUserPrompt(req)}` },
+            ],
+          },
+        ],
       },
-    ],
-  });
+      { timeout: GEMINI_TIMEOUT_MS },
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (/timeout|abort|deadline/i.test(msg)) throw new Error("AI_TIMEOUT");
+    throw new Error("AI_PROVIDER_ERROR");
+  }
 
   const text = result.response.text();
   if (!text?.trim()) {
     throw new Error("EMPTY_MODEL_RESPONSE");
   }
 
-  const parsed = ResponseSchema.safeParse(extractJson(text));
+  let json: unknown;
+  try {
+    json = extractJson(text);
+  } catch {
+    throw new Error("INVALID_MODEL_RESPONSE");
+  }
+  const parsed = ResponseSchema.safeParse(json);
   if (!parsed.success) {
     throw new Error("INVALID_MODEL_RESPONSE");
   }
 
   const data = parsed.data;
+
+  // Model-suggested links must be on trusted government/curated hosts only.
+  data.sources = filterTrustedSources(data.sources);
 
   // Drop any model-invented visual IDs that are not in the curated catalog.
   if (data.visualIds) {

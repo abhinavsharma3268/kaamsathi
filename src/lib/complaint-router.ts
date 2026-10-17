@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
-import { getGeminiConfig } from "./ai";
+import { GEMINI_TIMEOUT_MS, getGeminiConfig } from "./ai";
 import {
   COMPLAINT_PORTAL_IDS,
   COMPLAINT_PORTALS,
@@ -633,12 +633,26 @@ ${portalDirectoryForPrompt()}
     wrapUntrusted("COMPLAINT_FACTS", JSON.stringify(args.facts, null, 2)),
   ].join("\n\n");
 
-  const result = await generativeModel.generateContent({
-    contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }],
-  });
+  let result;
+  try {
+    result = await generativeModel.generateContent(
+      { contents: [{ role: "user", parts: [{ text: `${system}\n\n${user}` }] }] },
+      { timeout: GEMINI_TIMEOUT_MS },
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (/timeout|abort|deadline/i.test(msg)) throw new Error("AI_TIMEOUT");
+    throw new Error("AI_PROVIDER_ERROR");
+  }
   const text = result.response.text();
   if (!text?.trim()) throw new Error("EMPTY_MODEL_RESPONSE");
-  const parsed = ComplaintPortalAiSchema.safeParse(extractJson(text));
+  let json: unknown;
+  try {
+    json = extractJson(text);
+  } catch {
+    throw new Error("INVALID_MODEL_RESPONSE");
+  }
+  const parsed = ComplaintPortalAiSchema.safeParse(json);
   if (!parsed.success) throw new Error("INVALID_MODEL_RESPONSE");
   return parsed.data;
 }

@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
-import { getGeminiConfig, runAi } from "./ai";
+import { GEMINI_TIMEOUT_MS, getGeminiConfig, runAi } from "./ai";
 import {
   extractEarningsNumbers,
   inferIntentLocal,
@@ -52,9 +52,10 @@ async function classifyWithGemini(args: {
     },
   });
 
+  // Send only a compact recent context: last 4 turns, each trimmed.
   const historyBlob = args.history
     .slice(-4)
-    .map((h) => `${h.role}: ${h.content}`)
+    .map((h) => `${h.role}: ${sanitizeUserText(h.content, 400)}`)
     .join("\n");
 
   const prompt = `
@@ -82,9 +83,17 @@ ${historyBlob ? wrapUntrusted("RECENT_CHAT", historyBlob) : ""}
 ${wrapUntrusted("USER_MESSAGE", args.message)}
 `.trim();
 
-  const result = await m.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-  });
+  let result;
+  try {
+    result = await m.generateContent(
+      { contents: [{ role: "user", parts: [{ text: prompt }] }] },
+      { timeout: GEMINI_TIMEOUT_MS },
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (/timeout|abort|deadline/i.test(msg)) throw new Error("AI_TIMEOUT");
+    throw new Error("AI_PROVIDER_ERROR");
+  }
   const text = result.response.text();
   if (!text?.trim()) throw new Error("EMPTY_MODEL_RESPONSE");
   const cleaned = text
@@ -232,11 +241,12 @@ export async function runChatTurn(args: {
         deepLink: "/documents",
       };
     }
+    const docText = sanitizeUserText(message, 6000);
     const ai = await runAi({
       module: "documents",
       lang: args.lang,
-      message,
-      payload: { documentText: message },
+      message: "Explain this work-related document in simple language.",
+      payload: { documentText: docText },
     });
     return {
       kind: "documents",

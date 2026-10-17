@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from "react";
-import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { VoiceInput } from "@/components/VoiceInput";
 import { ChatResultCard } from "@/components/chat/ChatResultCard";
+import { ToolsDrawer, ToolsSidebar } from "@/components/chat/ToolsSidebar";
 import { useLanguage } from "@/hooks/useLanguage";
 import { callChat } from "@/lib/client-chat";
 import type { ChatConversation, ChatIntent, ChatMessage } from "@/lib/chat-types";
@@ -28,13 +28,6 @@ const STARTERS: { key: string; intent?: ChatIntent }[] = [
   { key: "chatStarterEarnings", intent: "earnings" },
 ];
 
-const QUICK: { href: string; labelKey: string }[] = [
-  { href: "/earnings", labelKey: "moduleEarnings" },
-  { href: "/safety", labelKey: "moduleSafety" },
-  { href: "/rights", labelKey: "moduleRights" },
-  { href: "/documents", labelKey: "moduleDocs" },
-];
-
 function statusFromResult(kind: string): ChatConversation["status"] {
   if (kind === "grievance" || kind === "portal") return "draft_ready";
   if (kind === "follow_up") return "waiting_user";
@@ -50,6 +43,8 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
   const [convoId, setConvoId] = useState(() => newConversationId());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [forcedIntent, setForcedIntent] = useState<ChatIntent | undefined>();
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const closeTools = useCallback(() => setToolsOpen(false), []);
   const listRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -167,22 +162,36 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
   const starters = useMemo(() => STARTERS, []);
 
   return (
-    <div className="flex min-h-[70dvh] flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex items-start gap-4">
+    <div className="flex min-h-[70dvh] min-w-0 flex-1 flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <LanguagePicker />
-        <button
-          type="button"
-          className="ks-btn ks-btn-secondary min-h-11 shrink-0 rounded-2xl px-3 text-sm"
-          onClick={onNewChat}
-        >
-          {t("chatNew")}
-        </button>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <span className="lg:hidden">
+            <button
+              type="button"
+              className="ks-btn ks-btn-secondary min-h-11 rounded-2xl px-3 text-sm"
+              onClick={() => setToolsOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={toolsOpen}
+            >
+              ☰ {t("chatTools")}
+            </button>
+          </span>
+          <button
+            type="button"
+            className="ks-btn ks-btn-secondary min-h-11 rounded-2xl px-3 text-sm"
+            onClick={onNewChat}
+          >
+            {t("chatNew")}
+          </button>
+        </div>
       </div>
 
       <div
         ref={listRef}
         className="flex-1 space-y-3 overflow-y-auto overscroll-contain rounded-2xl bg-white/50 p-3 ring-1 ring-[var(--line)]"
-        style={{ maxHeight: "min(58dvh, 520px)", contain: "content" }}
+        style={{ maxHeight: "min(62dvh, 600px)", contain: "content" }}
         aria-live="polite"
       >
         {empty && (
@@ -202,17 +211,6 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
                 >
                   {t(s.key)}
                 </button>
-              ))}
-            </div>
-            <div className="grid w-full grid-cols-2 gap-2 pt-1">
-              {QUICK.map((q) => (
-                <Link
-                  key={q.href}
-                  href={q.href}
-                  className="ks-card min-h-12 px-3 py-2 text-center text-sm font-bold text-[var(--brand-deep)]"
-                >
-                  {t(q.labelKey)}
-                </Link>
               ))}
             </div>
           </div>
@@ -319,6 +317,10 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
           {t("chatClear")}
         </button>
       )}
+    </div>
+
+    <ToolsSidebar />
+    <ToolsDrawer open={toolsOpen} onClose={closeTools} />
     </div>
   );
 }
