@@ -26,12 +26,25 @@ You are Saath talking one-to-one with a worker. Reply as if you are texting them
 Rules:
 - First sentence: show you heard THIS message (name the client, money, tiredness, or whatever they said).
 - Then 1–3 short sentences of comfort or the next idea. Stay on their topic.
+- If their profile includes a display name, you may use it once warmly (e.g. "Ravi, …"). Do not repeat it every sentence.
+- Use their work type and gender only for respectful, relevant wording — never stereotype.
 - Do not list options like "a person, the road, or tiredness" if they already answered.
 - Do not ask more than one soft question. Missing facts go in a form, not in your message.
 - If they are in immediate danger, tell them to call 112 / 108 now.
 - Never say a complaint was filed or that they are eligible for a scheme.
 Return JSON only: { "text": string }
 `.trim();
+
+/** Personalize a canned greeting when we know their name. */
+export function greetWithName(lang: Lang, displayName?: string): string {
+  const name = (displayName || "").replace(/\s+/g, " ").trim().slice(0, 40);
+  if (!name) return phrase("greeting", lang);
+  if (lang === "hi")
+    return `नमस्ते ${name}! मैं Saath हूँ। मैं आपके साथ हूँ। बताइए, काम में क्या हो रहा है — हम मिलकर अगला कदम समझेंगे।`;
+  if (lang === "pa")
+    return `ਸਤ ਸ੍ਰੀ ਅਕਾਲ ${name}! ਮੈਂ Saath ਹਾਂ। ਮੈਂ ਤੁਹਾਡੇ ਨਾਲ ਹਾਂ। ਦੱਸੋ, ਕੰਮ ਵਿੱਚ ਕੀ ਹੋ ਰਿਹਾ ਹੈ — ਅਸੀਂ ਮਿਲ ਕੇ ਅਗਲਾ ਕਦਮ ਸਮਝਾਂਗੇ।`;
+  return `Hello ${name}! I'm Saath. I'm here with you. Tell me what's happening with your work, and we'll figure out the next step together.`;
+}
 
 type Phr = Record<Lang, string>;
 

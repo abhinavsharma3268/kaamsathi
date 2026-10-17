@@ -13,6 +13,7 @@ import {
   EMPTY_PROFILE,
   buildProfile,
   hasCompletedProfileSetup,
+  type GenderId,
   type WorkerProfile,
 } from "@/lib/profile";
 import { loadProfile, saveProfile } from "@/lib/storage";
@@ -25,6 +26,11 @@ type Ctx = {
   toggleAdditional: (id: OccupationId) => void;
   skipSetup: () => void;
   saveNow: (next: WorkerProfile) => void;
+  updatePersonal: (patch: {
+    displayName?: string;
+    gender?: GenderId | null;
+    photoDataUrl?: string | null;
+  }) => void;
   clearProfile: () => void;
 };
 
@@ -44,6 +50,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       primary: next.primaryOccupation,
       additional: next.additionalOccupations,
       skipped: next.skipped,
+      displayName: next.displayName,
+      gender: next.gender,
+      photoDataUrl: next.photoDataUrl,
     });
     setProfile(normalized);
     saveProfile(normalized);
@@ -77,8 +86,32 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     persist({ ...profile, skipped: true });
   }, [persist, profile]);
 
+  const updatePersonal = useCallback(
+    (patch: {
+      displayName?: string;
+      gender?: GenderId | null;
+      photoDataUrl?: string | null;
+    }) => {
+      persist({
+        ...profile,
+        displayName:
+          patch.displayName !== undefined ? patch.displayName : profile.displayName,
+        gender: patch.gender !== undefined ? patch.gender : profile.gender,
+        photoDataUrl:
+          patch.photoDataUrl !== undefined
+            ? patch.photoDataUrl
+            : profile.photoDataUrl,
+      });
+    },
+    [persist, profile],
+  );
+
   const clearProfile = useCallback(() => {
-    const empty = { ...EMPTY_PROFILE, skipped: false, updatedAt: new Date().toISOString() };
+    const empty = {
+      ...EMPTY_PROFILE,
+      skipped: false,
+      updatedAt: new Date().toISOString(),
+    };
     setProfile(empty);
     saveProfile(empty);
   }, []);
@@ -92,9 +125,19 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       toggleAdditional,
       skipSetup,
       saveNow: persist,
+      updatePersonal,
       clearProfile,
     }),
-    [profile, ready, setPrimary, toggleAdditional, skipSetup, persist, clearProfile],
+    [
+      profile,
+      ready,
+      setPrimary,
+      toggleAdditional,
+      skipSetup,
+      persist,
+      updatePersonal,
+      clearProfile,
+    ],
   );
 
   return (

@@ -498,26 +498,75 @@ export function sortSourcesForOccupation<T extends { id: string }>(
   });
 }
 
+const GENDER_AI_LABEL: Record<string, string> = {
+  woman: "woman",
+  man: "man",
+  other: "another gender identity",
+  prefer_not: "prefer not to say",
+};
+
 export function profileAiContext(args: {
   primary: OccupationId | null;
   additional: OccupationId[];
   language: string;
+  displayName?: string;
+  gender?: string | null;
 }): Record<string, unknown> {
   const primary = getOccupation(args.primary);
   const additional = args.additional
     .filter((id) => id !== primary.id)
     .map((id) => getOccupation(id).aiLabel);
+  const displayName = (args.displayName || "").replace(/\s+/g, " ").trim().slice(0, 60);
+  const gender =
+    args.gender && GENDER_AI_LABEL[args.gender]
+      ? GENDER_AI_LABEL[args.gender]
+      : null;
   return {
     primaryOccupationId: primary.id,
     primaryOccupation: primary.aiLabel,
     additionalOccupations: additional,
     language: args.language,
+    ...(displayName ? { displayName } : {}),
+    ...(gender ? { gender } : {}),
     privacyNote:
-      "Profile stores only occupation preferences locally. No Aadhaar, bank, or ID numbers.",
+      "Profile is saved only on the worker's phone (name, gender, work type). No Aadhaar, bank, or ID numbers. Never ask them to paste ID numbers.",
     guidanceRules: [
+      "If displayName is set, address them by that name naturally once in a while — do not overuse it.",
+      "If gender is set, use it only for respectful wording; never stereotype or assume eligibility.",
       "Tailor examples to this occupation without inventing rights or eligibility.",
       "Ask a short follow-up question when key facts are missing (dates, amount, platform/employer).",
       "Never claim a scheme, permit, or complaint was completed.",
     ],
   };
+}
+
+/** Compact lines for Gemini chat turns. */
+export function workerProfilePromptBlock(
+  workerProfile: Record<string, unknown> | undefined | null,
+): string {
+  if (!workerProfile) return "";
+  const lines: string[] = [];
+  const name = workerProfile.displayName;
+  if (typeof name === "string" && name.trim()) {
+    lines.push(`Their name: ${name.trim().slice(0, 60)}`);
+  }
+  const gender = workerProfile.gender;
+  if (typeof gender === "string" && gender.trim()) {
+    lines.push(`Gender (self-described): ${gender.trim().slice(0, 40)}`);
+  }
+  const occ = workerProfile.primaryOccupation;
+  if (typeof occ === "string" && occ.trim()) {
+    lines.push(`Main work: ${occ.trim().slice(0, 80)}`);
+  }
+  const extra = workerProfile.additionalOccupations;
+  if (Array.isArray(extra) && extra.length) {
+    lines.push(
+      `Also does: ${extra
+        .filter((x): x is string => typeof x === "string")
+        .slice(0, 4)
+        .join(", ")}`,
+    );
+  }
+  if (!lines.length) return "";
+  return `Known worker profile (use when helpful; do not invent more):\n${lines.join("\n")}`;
 }

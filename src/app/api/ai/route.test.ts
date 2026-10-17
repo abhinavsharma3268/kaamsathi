@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { __resetRateLimitForTests } from "@/lib/api-guard";
 
 const runAi = vi.fn();
 
 vi.mock("@/lib/ai", () => ({
   runAi: (...args: unknown[]) => runAi(...args),
+  GEMINI_TIMEOUT_MS: 25_000,
 }));
 
 describe("POST /api/ai", () => {
   beforeEach(() => {
     vi.resetModules();
     runAi.mockReset();
+    __resetRateLimitForTests();
   });
 
   async function post(body: unknown) {

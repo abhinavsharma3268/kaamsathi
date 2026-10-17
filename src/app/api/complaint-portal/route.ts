@@ -1,10 +1,19 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import {
   ComplaintFactsSchema,
   routeComplaintPortal,
 } from "@/lib/complaint-router";
 import { isTrustedPortalUrl } from "@/lib/complaint-portals";
+import { GEMINI_TIMEOUT_MS } from "@/lib/ai";
+import {
+  aiErrorResponse,
+  enforceRateLimit,
+  jsonNoStore,
+  logAiFailure,
+  readJsonBody,
+  safeError,
+  withTimeout,
+} from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -15,72 +24,50 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
-  let json: unknown;
-  try {
-    json = await req.json();
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON body.", code: "BAD_REQUEST" },
-      { status: 400 },
-    );
-  }
+  const limited = await enforceRateLimit(req, {
+    scope: "complaint-portal",
+    limit: 15,
+    windowMs: 60_000,
+  });
+  if (limited) return limited;
 
-  const parsed = BodySchema.safeParse(json);
+  const body = await readJsonBody(req, 80_000);
+  if (!body.ok) return body.response;
+
+  const parsed = BodySchema.safeParse(body.data);
   if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: "Invalid request. Please describe what happened.",
-        code: "BAD_REQUEST",
-        details: parsed.error.flatten(),
-      },
-      { status: 400 },
+    return safeError(
+      "BAD_REQUEST",
+      "Invalid request. Please describe what happened.",
+      400,
     );
   }
 
   if (!parsed.data.facts.complaint.trim()) {
-    return NextResponse.json(
-      { error: "Please write what happened.", code: "EMPTY_COMPLAINT" },
-      { status: 400 },
-    );
+    return safeError("EMPTY_COMPLAINT", "Please write what happened.", 400);
   }
 
   try {
-    const result = await routeComplaintPortal(parsed.data);
-    // Belt-and-suspenders: never return an untrusted URL
+    const result = await withTimeout(
+      routeComplaintPortal(parsed.data),
+      GEMINI_TIMEOUT_MS + 5_000,
+    );
     if (
       result.recommendedPortal &&
       !isTrustedPortalUrl(result.recommendedPortal.officialUrl)
     ) {
-      return NextResponse.json(
-        {
-          error: "Portal validation failed. No substitute link was shown.",
-          code: "UNTRUSTED_PORTAL",
-        },
-        { status: 502 },
+      return safeError(
+        "UNTRUSTED_PORTAL",
+        "Portal validation failed. No substitute link was shown.",
+        502,
       );
     }
-    return NextResponse.json({ ok: true, ...result });
+    return jsonNoStore({ ok: true, ...result });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "UNKNOWN";
-    if (msg === "MISSING_API_KEY") {
-      return NextResponse.json(
-        {
-          error:
-            "Assistant unavailable: GEMINI_API_KEY is not configured on the server.",
-          code: "MISSING_API_KEY",
-        },
-        { status: 503 },
-      );
-    }
-    console.error("[complaint-portal]", msg);
-    return NextResponse.json(
-      {
-        error:
-          "Could not find a complaint portal right now. No invented recommendation was shown. Please try again.",
-        code: "AI_FAILED",
-        detail: msg,
-      },
-      { status: 502 },
+    logAiFailure("complaint-portal", err);
+    return aiErrorResponse(
+      err,
+      "Could not find a complaint portal right now. No invented recommendation was shown. Please try again.",
     );
   }
 }

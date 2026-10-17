@@ -29,6 +29,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setReady(true);
   }, []);
 
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = lang;
+    }
+  }, [lang]);
+
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
     saveLang(l);

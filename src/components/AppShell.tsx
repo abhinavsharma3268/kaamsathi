@@ -24,6 +24,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           : "min-h-dvh pb-24"
       }`}
     >
+      <a
+        href="#main-content"
+        className="sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:m-0 focus:h-auto focus:w-auto focus:overflow-visible focus:rounded-xl focus:bg-white focus:px-4 focus:py-2 focus:text-base focus:font-bold focus:text-[var(--brand-deep)] focus:ring-2 focus:ring-[var(--brand)]"
+      >
+        {t("skipToContent")}
+      </a>
       <header className={`shrink-0 ${isHome ? "mb-2" : "mb-4 space-y-2"}`}>
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -53,7 +59,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         {!isHome && <LanguageSwitcher />}
       </header>
-      <main className={isHome ? "flex min-h-0 flex-1 flex-col" : undefined}>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={isHome ? "flex min-h-0 flex-1 flex-col outline-none" : "outline-none"}
+      >
         {children}
       </main>
       {!isHome && (

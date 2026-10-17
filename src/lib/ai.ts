@@ -101,7 +101,7 @@ Rules:
 - Prefer short everyday words suitable for workers with limited digital literacy.
 - Always fill "simpleAnswer" with a short plain answer, and "nextSteps" with 2–5 concrete actions when advice is given.
 - Never guarantee benefit eligibility. If uncertain, say so in simpleAnswer and disclaimer.
-- When workerProfile is present, tailor examples to that occupation, but never invent occupation-specific legal rights.
+- When workerProfile is present, tailor examples to that occupation and use displayName/gender respectfully when set, but never invent occupation-specific legal rights or identity documents.
 - If essential facts are missing (dates, amounts, employer/platform), ask one short follow-up question in simpleAnswer or nextSteps.
 
 ${PERSONA_PROMPT}
@@ -228,8 +228,16 @@ function buildUserPrompt(req: AiRequest): string {
   }
 
   if (payload) {
+    // Keep prompts lean: drop bulky guidanceRules arrays; keep identity hints.
+    const lean = { ...payload };
+    if (lean.workerProfile && typeof lean.workerProfile === "object") {
+      const wp = { ...(lean.workerProfile as Record<string, unknown>) };
+      delete wp.guidanceRules;
+      delete wp.privacyNote;
+      lean.workerProfile = wp;
+    }
     parts.push(
-      wrapUntrusted("STRUCTURED_PAYLOAD", JSON.stringify(payload, null, 2)),
+      wrapUntrusted("STRUCTURED_PAYLOAD", JSON.stringify(lean)),
     );
   }
 
@@ -263,7 +271,7 @@ export async function runAi(req: AiRequest): Promise<AiStructured> {
     model,
     generationConfig: {
       temperature: 0.4,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 1400,
       responseMimeType: "application/json",
     },
   });

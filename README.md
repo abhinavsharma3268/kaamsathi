@@ -51,11 +51,22 @@ Coverage includes:
 - Mailto helpers (`src/lib/mailto.test.ts`)
 - i18n EN/HI/PA (`src/lib/i18n.test.ts`)
 - Mocked Gemini `runAi` integration (`src/lib/ai.test.ts`)
-- `/api/ai` request validation (`src/app/api/ai/route.test.ts`)
-- Document entity extraction (`src/lib/document-extract.test.ts`)
+- `/api/ai` + `/api/complaint-portal` request validation
+- API guards: body size caps, rate limits, timeouts, `no-store` (`src/lib/api-guard.test.ts`)
+- Client fetch dedupe + no-store (`src/lib/client-fetch.test.ts`)
+- Trusted government link allowlist (`src/lib/trusted-links.test.ts`)
+- Document entity extraction + file text extract
 - Prompt-injection guards (`src/lib/prompt-guard.test.ts`)
 - Sync pack merge/export (`src/lib/sync.test.ts`)
+- Profile personalisation + chat persona helpers
 - UI components: `CopyButton`, `ModuleCard`
+
+### Security & efficiency (API)
+- Rate limiting + max body size on AI / chat / complaint / sync routes
+- Provider timeouts; errors never echo stacks or provider detail
+- `Cache-Control: no-store` on private responses; clients also fetch with `cache: "no-store"`
+- Model-suggested links filtered to trusted `.gov.in` / curated portals only
+- Trimmed chat history and lean prompts to cut tokens and latency
 
 ### Data persistence
 - **Default:** local-first (`localStorage`) for privacy on shared phones.

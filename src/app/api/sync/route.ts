@@ -1,5 +1,10 @@
-import { NextResponse } from "next/server";
 import { SyncPackSchema } from "@/lib/sync";
+import {
+  enforceRateLimit,
+  jsonNoStore,
+  readJsonBody,
+  safeError,
+} from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 
@@ -23,11 +28,18 @@ function authHeaders(token: string | null): HeadersInit {
 }
 
 export async function GET(req: Request) {
+  const limited = await enforceRateLimit(req, {
+    scope: "sync-get",
+    limit: 40,
+    windowMs: 60_000,
+  });
+  if (limited) return limited;
+
   const { url, token, configured } = syncConfig();
   const pull = new URL(req.url).searchParams.get("pull") === "1";
 
   if (!configured) {
-    return NextResponse.json({
+    return jsonNoStore({
       configured: false,
       message:
         "Local-first mode: earnings stay on this device. Use Export / Import to move data across phones. Set KAAMSAATHI_SYNC_URL for optional cloud sync.",
@@ -35,7 +47,7 @@ export async function GET(req: Request) {
   }
 
   if (!pull) {
-    return NextResponse.json({
+    return jsonNoStore({
       configured: true,
       message: "Cloud sync is configured. You can push or pull earnings packs.",
     });
@@ -46,51 +58,50 @@ export async function GET(req: Request) {
       method: "GET",
       headers: authHeaders(token),
       cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
     });
     if (!res.ok) {
-      return NextResponse.json(
-        { error: `Cloud pull failed (${res.status}).`, code: "CLOUD_PULL_FAILED" },
-        { status: 502 },
+      return safeError(
+        "CLOUD_PULL_FAILED",
+        "Cloud pull failed. Please try again.",
+        502,
       );
     }
     const data = await res.json();
     const pack = SyncPackSchema.parse(data.pack ?? data);
-    return NextResponse.json({ ok: true, pack });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "CLOUD_ERROR";
-    return NextResponse.json(
-      { error: "Cloud pull failed.", code: "CLOUD_PULL_FAILED", detail: msg },
-      { status: 502 },
+    return jsonNoStore({ ok: true, pack });
+  } catch {
+    return safeError(
+      "CLOUD_PULL_FAILED",
+      "Cloud pull failed. Please try again.",
+      502,
     );
   }
 }
 
 export async function POST(req: Request) {
+  const limited = await enforceRateLimit(req, {
+    scope: "sync-post",
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (limited) return limited;
+
   const { url, token, configured } = syncConfig();
   if (!configured) {
-    return NextResponse.json(
-      {
-        error:
-          "Cloud sync is not configured. Export a JSON backup instead, or set KAAMSAATHI_SYNC_URL.",
-        code: "SYNC_NOT_CONFIGURED",
-      },
-      { status: 503 },
+    return safeError(
+      "SYNC_NOT_CONFIGURED",
+      "Cloud sync is not configured. Export a JSON backup instead, or set KAAMSAATHI_SYNC_URL.",
+      503,
     );
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON.", code: "BAD_REQUEST" }, { status: 400 });
-  }
+  const body = await readJsonBody(req, 500_000);
+  if (!body.ok) return body.response;
 
-  const parsed = SyncPackSchema.safeParse(body);
+  const parsed = SyncPackSchema.safeParse(body.data);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid sync pack.", code: "BAD_PACK", details: parsed.error.flatten() },
-      { status: 400 },
-    );
+    return safeError("BAD_PACK", "Invalid sync pack.", 400);
   }
 
   try {
@@ -98,19 +109,22 @@ export async function POST(req: Request) {
       method: "PUT",
       headers: authHeaders(token),
       body: JSON.stringify({ pack: parsed.data }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
     });
     if (!res.ok) {
-      return NextResponse.json(
-        { error: `Cloud push failed (${res.status}).`, code: "CLOUD_PUSH_FAILED" },
-        { status: 502 },
+      return safeError(
+        "CLOUD_PUSH_FAILED",
+        "Cloud push failed. Please try again.",
+        502,
       );
     }
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "CLOUD_ERROR";
-    return NextResponse.json(
-      { error: "Cloud push failed.", code: "CLOUD_PUSH_FAILED", detail: msg },
-      { status: 502 },
+    return jsonNoStore({ ok: true });
+  } catch {
+    return safeError(
+      "CLOUD_PUSH_FAILED",
+      "Cloud push failed. Please try again.",
+      502,
     );
   }
 }

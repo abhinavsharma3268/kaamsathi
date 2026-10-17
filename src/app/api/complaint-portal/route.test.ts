@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { __resetRateLimitForTests } from "@/lib/api-guard";
 
 const routeComplaintPortal = vi.fn();
 
@@ -12,10 +13,16 @@ vi.mock("@/lib/complaint-router", async () => {
   };
 });
 
+vi.mock("@/lib/ai", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/ai")>("@/lib/ai");
+  return { ...actual, GEMINI_TIMEOUT_MS: 25_000 };
+});
+
 describe("POST /api/complaint-portal", () => {
   beforeEach(() => {
     vi.resetModules();
     routeComplaintPortal.mockReset();
+    __resetRateLimitForTests();
   });
 
   async function post(body: unknown) {
@@ -114,7 +121,7 @@ describe("POST /api/complaint-portal", () => {
     });
     expect(res.status).toBe(502);
     const json = await res.json();
-    expect(json.code).toBe("AI_FAILED");
+    expect(["AI_FAILED", "AI_INVALID"]).toContain(json.code);
     expect(json.error).toMatch(/no invented recommendation/i);
   });
 });

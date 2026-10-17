@@ -1,5 +1,6 @@
 import type { Lang } from "./i18n";
 import type { ComplaintFacts, ComplaintPortalResult } from "./complaint-router";
+import { fetchJsonNoStore } from "./client-fetch";
 
 export type ComplaintPortalClientOk = { ok: true } & ComplaintPortalResult;
 export type ComplaintPortalClientErr = {
@@ -13,10 +14,10 @@ export async function callComplaintPortal(args: {
   facts: ComplaintFacts;
 }): Promise<ComplaintPortalClientOk | ComplaintPortalClientErr> {
   try {
-    const res = await fetch("/api/complaint-portal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(args),
+    const res = await fetchJsonNoStore({
+      url: "/api/complaint-portal",
+      body: args,
+      timeoutMs: 45_000,
     });
     const data = await res.json();
     if (!res.ok) {

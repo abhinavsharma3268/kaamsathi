@@ -1,6 +1,7 @@
 import type { Lang } from "./i18n";
 import type { AiModule } from "./ai";
 import type { HowToGuide, HowToTopicId } from "./show-me-how";
+import { fetchJsonNoStore } from "./client-fetch";
 import { profileAiContext } from "./occupations";
 import { loadProfile } from "./storage";
 
@@ -40,17 +41,20 @@ export async function callAi(args: {
       primary: profile.primaryOccupation,
       additional: profile.additionalOccupations,
       language: args.lang,
+      displayName: profile.displayName,
+      gender: profile.gender,
     });
-    const res = await fetch("/api/ai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...args,
-        payload: {
-          ...(args.payload || {}),
-          workerProfile,
-        },
-      }),
+    const body = {
+      ...args,
+      payload: {
+        ...(args.payload || {}),
+        workerProfile,
+      },
+    };
+    const res = await fetchJsonNoStore({
+      url: "/api/ai",
+      body,
+      timeoutMs: 45_000,
     });
     const data = await res.json();
     if (!res.ok) {

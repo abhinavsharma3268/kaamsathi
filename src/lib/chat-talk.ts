@@ -4,6 +4,7 @@ import { GEMINI_TIMEOUT_MS, getGeminiConfig } from "./ai";
 import { TALK_PROMPT } from "./chat-persona";
 import type { ChatIntent } from "./chat-types";
 import type { Lang } from "./i18n";
+import { workerProfilePromptBlock } from "./occupations";
 import {
   PROMPT_INJECTION_POLICY,
   sanitizeUserText,
@@ -43,6 +44,7 @@ export async function talkWithGemini(args: {
   intent: ChatIntent;
   latest: string;
   facts: string;
+  workerProfile?: Record<string, unknown>;
 }): Promise<string> {
   const latest = sanitizeUserText(args.latest, 1500);
   const facts = sanitizeUserText(args.facts, 4000);
@@ -54,16 +56,19 @@ export async function talkWithGemini(args: {
     model,
     generationConfig: {
       temperature: 0.55,
-      maxOutputTokens: 350,
+      maxOutputTokens: 280,
       responseMimeType: "application/json",
     },
   });
+
+  const profileBlock = workerProfilePromptBlock(args.workerProfile);
 
   const prompt = `
 ${TALK_PROMPT}
 ${PROMPT_INJECTION_POLICY}
 ${langLine(args.lang)}
 Topic: ${args.intent}
+${profileBlock}
 ${wrapUntrusted("WHAT_THEY_HAVE_TOLD_YOU", facts)}
 ${wrapUntrusted("LATEST_MESSAGE", latest)}
 `.trim();

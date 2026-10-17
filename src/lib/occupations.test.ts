@@ -5,6 +5,7 @@ import {
   personalizedQuickPrompts,
   profileAiContext,
   sortSourcesForOccupation,
+  workerProfilePromptBlock,
 } from "./occupations";
 
 describe("occupation personalization", () => {
@@ -36,17 +37,33 @@ describe("occupation personalization", () => {
     expect(sorted.map((s) => s.id)).toContain("ncs");
   });
 
-  it("builds AI context with occupation and language, without identity fields", () => {
+  it("builds AI context with occupation, name, and gender, without ID fields", () => {
     const ctx = profileAiContext({
       primary: "domestic",
       additional: ["vendor"],
       language: "hi",
+      displayName: "Meena",
+      gender: "woman",
     });
     expect(ctx.primaryOccupationId).toBe("domestic");
     expect(ctx.language).toBe("hi");
+    expect(ctx.displayName).toBe("Meena");
+    expect(ctx.gender).toBe("woman");
     expect(ctx).not.toHaveProperty("aadhaar");
     expect(ctx).not.toHaveProperty("bankAccount");
-    expect(String(ctx.privacyNote)).toMatch(/occupation preferences/i);
+    expect(ctx).not.toHaveProperty("photoDataUrl");
+    expect(String(ctx.privacyNote)).toMatch(/phone/i);
     expect(getOccupation("domestic").showEmployer).toBe(true);
+  });
+
+  it("formats a compact Gemini profile block without inventing fields", () => {
+    const block = workerProfilePromptBlock({
+      displayName: "Ravi",
+      gender: "man",
+      primaryOccupation: "Food delivery",
+    });
+    expect(block).toContain("Ravi");
+    expect(block).toContain("Food delivery");
+    expect(workerProfilePromptBlock({})).toBe("");
   });
 });

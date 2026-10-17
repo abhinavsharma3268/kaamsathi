@@ -18,6 +18,7 @@ import {
   earningsText,
   formForIntent,
   formatFormAnswers,
+  greetWithName,
   phrase,
   resolveThread,
 } from "./chat-persona";
@@ -32,6 +33,11 @@ import {
   sanitizeUserText,
   wrapUntrusted,
 } from "./prompt-guard";
+
+function profileName(workerProfile?: Record<string, unknown>): string {
+  const n = workerProfile?.displayName;
+  return typeof n === "string" ? n : "";
+}
 
 const ClassifySchema = z.object({
   intent: ChatIntentSchema,
@@ -59,7 +65,7 @@ async function classifyWithGemini(args: {
     model,
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 400,
+      maxOutputTokens: 280,
       responseMimeType: "application/json",
     },
   });
@@ -133,12 +139,14 @@ export async function runChatTurn(args: {
   history?: ChatHistoryItem[];
   forcedIntent?: ChatIntent;
   formAnswers?: ChatFormAnswers;
+  workerProfile?: Record<string, unknown>;
 }): Promise<ChatResult> {
   const formBlob = args.formAnswers ? formatFormAnswers(args.formAnswers) : "";
   const message = sanitizeUserText(
     formBlob ? `${args.message}\n${formBlob}` : args.message,
     8000,
   );
+  const workerProfile = args.workerProfile;
   if (!message.trim()) {
     return {
       kind: "error",
@@ -155,7 +163,10 @@ export async function runChatTurn(args: {
   const lastAssistant = [...history].reverse().find((h) => h.role === "assistant");
   const smallTalk = detectSmallTalk(args.message);
   if (!args.forcedIntent && !formBlob && smallTalk && lastAssistant?.kind !== "follow_up") {
-    const text = phrase(smallTalk, args.lang);
+    const text =
+      smallTalk === "greeting"
+        ? greetWithName(args.lang, profileName(workerProfile))
+        : phrase(smallTalk, args.lang);
     return { kind: "message", intent: "general", text, simpleAnswer: text };
   }
 
@@ -209,7 +220,10 @@ export async function runChatTurn(args: {
   });
 
   if (decision.type === "small_talk") {
-    const text = phrase(decision.key, args.lang);
+    const text =
+      decision.key === "greeting"
+        ? greetWithName(args.lang, profileName(workerProfile))
+        : phrase(decision.key, args.lang);
     return { kind: "message", intent: "general", text, simpleAnswer: text };
   }
 
@@ -219,6 +233,7 @@ export async function runChatTurn(args: {
       intent: decision.intent,
       latest: args.message,
       facts,
+      workerProfile,
     });
     return {
       kind: "follow_up",
@@ -248,6 +263,7 @@ export async function runChatTurn(args: {
         intent: "earnings",
         latest: args.message,
         facts,
+        workerProfile,
       });
       return {
         kind: "follow_up",
@@ -287,6 +303,7 @@ export async function runChatTurn(args: {
         intent: "documents",
         latest: args.message,
         facts,
+        workerProfile,
       });
       return {
         kind: "follow_up",
@@ -301,7 +318,7 @@ export async function runChatTurn(args: {
         module: "documents",
         lang: args.lang,
         message: "Explain this work-related document in simple language.",
-        payload: { documentText: docText },
+        payload: { documentText: docText, workerProfile },
       });
       return {
         kind: "documents",
@@ -319,6 +336,7 @@ export async function runChatTurn(args: {
         intent: "documents",
         latest: args.message,
         facts,
+        workerProfile,
       });
       return { kind: "follow_up", intent: "documents", text, form: formForIntent("documents") || undefined };
     }
@@ -340,6 +358,7 @@ export async function runChatTurn(args: {
           intent: "complaint_portal",
           latest: args.message,
           facts,
+          workerProfile,
         });
         return {
           kind: "follow_up",
@@ -380,7 +399,7 @@ export async function runChatTurn(args: {
         module: "grievance",
         lang: args.lang,
         message: facts,
-        payload: { issue: facts },
+        payload: { issue: facts, workerProfile },
       });
       return {
         kind: "grievance",
@@ -408,6 +427,7 @@ export async function runChatTurn(args: {
         module: intent,
         lang: args.lang,
         message: facts,
+        payload: { workerProfile },
       });
       return {
         kind: intent,
@@ -431,6 +451,7 @@ export async function runChatTurn(args: {
             intent,
             latest: args.message,
             facts,
+            workerProfile,
           })),
         deepLink: intent === "safety" ? "/safety" : "/rights",
       };
@@ -455,6 +476,7 @@ export async function runChatTurn(args: {
       module: "rights",
       lang: args.lang,
       message: `The worker said: ${facts}. Reply as Saath: acknowledge in one line, then give short practical next steps. If something essential is unclear, ask exactly one question. Do not invent schemes or eligibility.`,
+      payload: { workerProfile },
     });
     return {
       kind: "message",

@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
 import { getGeminiConfig, isAiConfigured } from "@/lib/ai";
+import { jsonNoStore } from "@/lib/api-guard";
 
 export const runtime = "nodejs";
 
 export async function GET() {
   const { model } = getGeminiConfig();
-  return NextResponse.json({
+  return jsonNoStore({
     ok: true,
     aiConfigured: isAiConfigured(),
     model: isAiConfigured() ? model : null,

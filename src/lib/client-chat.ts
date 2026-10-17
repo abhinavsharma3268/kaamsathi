@@ -1,5 +1,8 @@
 import type { Lang } from "./i18n";
 import type { ChatFormAnswers, ChatHistoryItem, ChatIntent, ChatResult } from "./chat-types";
+import { fetchJsonNoStore } from "./client-fetch";
+import { profileAiContext } from "./occupations";
+import { loadProfile } from "./storage";
 
 export type ChatClientOk = { ok: true; result: ChatResult };
 export type ChatClientErr = { ok: false; error: string; code?: string };
@@ -13,17 +16,32 @@ export async function callChat(args: {
   signal?: AbortSignal;
 }): Promise<ChatClientOk | ChatClientErr> {
   try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const profile = loadProfile();
+    const workerProfile = profileAiContext({
+      primary: profile.primaryOccupation,
+      additional: profile.additionalOccupations,
+      language: args.lang,
+      displayName: profile.displayName,
+      gender: profile.gender,
+    });
+    const history = (args.history || [])
+      .slice(-6)
+      .map((h) => ({
+        ...h,
+        content: h.content.slice(0, 1500),
+      }));
+    const res = await fetchJsonNoStore({
+      url: "/api/chat",
+      body: {
         lang: args.lang,
-        message: args.message,
-        history: args.history?.slice(-8),
+        message: args.message.slice(0, 8000),
+        history,
         forcedIntent: args.forcedIntent,
         formAnswers: args.formAnswers,
-      }),
+        workerProfile,
+      },
       signal: args.signal,
+      timeoutMs: 50_000,
     });
     const data = await res.json();
     if (!res.ok) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { ProfilePersonal } from "@/components/ProfilePersonal";
 import { ProfileSetup } from "@/components/ProfileSetup";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useProfile } from "@/hooks/useProfile";
@@ -11,6 +12,7 @@ export default function ProfilePage() {
   const primary = profile.primaryOccupation
     ? t(getOccupation(profile.primaryOccupation).nameKey)
     : t("profileNone");
+  const greetingName = profile.displayName.trim();
 
   return (
     <div className="space-y-4">
@@ -18,6 +20,11 @@ export default function ProfilePage() {
         {t("profilePageTitle")}
       </h1>
       <p className="text-base ks-muted">{t("profilePageBody")}</p>
+      {greetingName && (
+        <p className="text-lg font-semibold text-[var(--brand-deep)]">
+          {t("profileHello").replace("{name}", greetingName)}
+        </p>
+      )}
       <p className="text-base">
         <span className="font-bold">{t("profilePrimary")}:</span> {primary}
       </p>
@@ -29,6 +36,8 @@ export default function ProfilePage() {
             .join(", ")}
         </p>
       )}
+
+      <ProfilePersonal />
 
       <ProfileSetup showSkip={false} />
 

@@ -4,6 +4,7 @@ import {
   formForIntent,
   formatFormAnswers,
   needsDetailForm,
+  greetWithName,
   phrase,
   resolveThread,
 } from "./chat-persona";
@@ -146,5 +147,11 @@ describe("form helpers", () => {
     expect(formatFormAnswers({ who: "Swiggy", amount: "  ", when: "yesterday" })).toBe(
       "who: Swiggy\nwhen: yesterday",
     );
+  });
+
+  it("greets by name when the profile has one", () => {
+    expect(greetWithName("en", "Ravi")).toContain("Ravi");
+    expect(greetWithName("hi", "मीना")).toContain("मीना");
+    expect(greetWithName("en", "")).toBe(phrase("greeting", "en"));
   });
 });
