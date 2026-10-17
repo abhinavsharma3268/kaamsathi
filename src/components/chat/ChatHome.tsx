@@ -190,15 +190,15 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
   const starters = useMemo(() => STARTERS, []);
 
   return (
-    <div className="flex items-start gap-4">
-    <div className="flex min-h-[70dvh] min-w-0 flex-1 flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex min-h-0 flex-1 items-stretch gap-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
         <LanguagePicker />
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <span className="lg:hidden">
             <button
               type="button"
-              className="ks-btn ks-btn-secondary min-h-11 rounded-2xl px-3 text-sm"
+              className="ks-btn ks-btn-secondary min-h-10 rounded-2xl px-3 text-sm"
               onClick={() => setToolsOpen(true)}
               aria-haspopup="dialog"
               aria-expanded={toolsOpen}
@@ -208,18 +208,29 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
           </span>
           <button
             type="button"
-            className="ks-btn ks-btn-secondary min-h-11 rounded-2xl px-3 text-sm"
+            className="ks-btn ks-btn-secondary min-h-10 rounded-2xl px-3 text-sm"
             onClick={onNewChat}
           >
             {t("chatNew")}
           </button>
+          {messages.length > 0 && (
+            <button
+              type="button"
+              className="text-sm font-semibold text-[var(--ink-muted)] underline"
+              onClick={() => {
+                deleteConversation(convoId);
+                onNewChat();
+              }}
+            >
+              {t("chatClear")}
+            </button>
+          )}
         </div>
       </div>
 
       <div
         ref={listRef}
-        className="flex-1 space-y-3 overflow-y-auto overscroll-contain rounded-2xl bg-white/50 p-3 ring-1 ring-[var(--line)]"
-        style={{ maxHeight: "min(62dvh, 600px)", contain: "content" }}
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain rounded-2xl bg-white/50 p-3 pb-6 ring-1 ring-[var(--line)]"
         aria-live="polite"
       >
         {empty && (
@@ -251,13 +262,13 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
           >
             {m.role === "assistant" && <SaathAvatar />}
             <div
-              className={`max-w-[88%] px-3 py-2 text-base leading-relaxed ${
+              className={`max-w-[min(92%,36rem)] overflow-hidden px-3 py-2 text-base leading-relaxed break-words [overflow-wrap:anywhere] ${
                 m.role === "user"
                   ? "rounded-2xl rounded-br-md bg-[var(--brand)] text-white"
                   : "rounded-2xl rounded-bl-md bg-white text-[var(--ink)] ring-1 ring-[var(--line)]"
               }`}
             >
-              <p className="whitespace-pre-wrap">{m.content}</p>
+              <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{m.content}</p>
               {m.result && m.role === "assistant" && (
                 <ChatResultCard result={m.result} />
               )}
@@ -313,7 +324,7 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
       )}
 
       <form
-        className="sticky bottom-0 flex items-end gap-2 rounded-2xl bg-white p-2 ring-1 ring-[var(--line)]"
+        className="flex shrink-0 items-end gap-2 rounded-2xl bg-white p-2 ring-1 ring-[var(--line)]"
         onSubmit={(e) => {
           e.preventDefault();
           void send(input);
@@ -332,7 +343,7 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
         <textarea
           id="saath-chat-input"
           ref={inputRef}
-          className="ks-textarea min-h-12 flex-1 resize-none rounded-2xl py-3 text-base"
+          className="ks-textarea ks-textarea-compact min-h-12 flex-1 rounded-2xl py-2.5 text-base"
           rows={2}
           value={input}
           disabled={loading}
@@ -354,18 +365,6 @@ export function ChatHome({ resumeId }: { resumeId?: string | null }) {
         </button>
       </form>
 
-      {messages.length > 0 && (
-        <button
-          type="button"
-          className="text-center text-sm font-semibold text-[var(--ink-muted)] underline"
-          onClick={() => {
-            deleteConversation(convoId);
-            onNewChat();
-          }}
-        >
-          {t("chatClear")}
-        </button>
-      )}
     </div>
 
     <ToolsSidebar />

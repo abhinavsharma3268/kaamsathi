@@ -55,7 +55,7 @@ export function ChatResultCard({ result }: { result: ChatResult }) {
           <p className="text-sm font-bold text-[var(--brand-deep)]">
             {t("chatDraftTitle")}
           </p>
-          <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-xl bg-[var(--bg)] p-2 text-sm">
+          <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-xl bg-[var(--bg)] p-2 text-sm">
             {result.draft}
           </pre>
           <CopyButton text={result.draft} />
@@ -63,7 +63,7 @@ export function ChatResultCard({ result }: { result: ChatResult }) {
       ) : null}
 
       {result.nextSteps && result.nextSteps.length > 0 && (
-        <ol className="list-decimal space-y-1 pl-4 text-sm">
+        <ol className="list-decimal space-y-1 pl-4 text-sm break-words [overflow-wrap:anywhere]">
           {result.nextSteps.map((s) => (
             <li key={s}>{s}</li>
           ))}

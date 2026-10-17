@@ -21,7 +21,9 @@ export default function HomePage() {
         </p>
       }
     >
-      <HomeChat />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <HomeChat />
+      </div>
     </Suspense>
   );
 }

@@ -18,12 +18,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`mx-auto min-h-dvh w-full max-w-lg px-4 pb-24 pt-4 sm:max-w-2xl ${
-        isHome ? "lg:max-w-5xl" : ""
+      className={`mx-auto flex w-full max-w-lg flex-col px-4 pt-3 sm:max-w-2xl ${
+        isHome
+          ? "h-dvh overflow-hidden pb-[5.5rem] lg:max-w-5xl"
+          : "min-h-dvh pb-24"
       }`}
     >
-      <header className="mb-4 space-y-2">
-        <div className="flex items-start justify-between gap-3">
+      <header className={`shrink-0 ${isHome ? "mb-2" : "mb-4 space-y-2"}`}>
+        <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             {!showCompactHeader && (
               <Link
@@ -33,10 +35,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 ← {t("navTalk")}
               </Link>
             )}
-            <Link href="/" className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2">
               <BrandLogo size="sm" priority={isHome} className="rounded-xl" />
               <div className="min-w-0">
-                <p className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight text-[var(--brand-deep)]">
+                <p className="font-[family-name:var(--font-display)] text-xl font-bold tracking-tight text-[var(--brand-deep)] sm:text-2xl">
                   {t("appName")}
                 </p>
                 {!isHome && (
@@ -51,8 +53,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         {!isHome && <LanguageSwitcher />}
       </header>
-      <main>{children}</main>
-      <footer className="mt-8 text-center text-sm ks-muted">{t("footerNote")}</footer>
+      <main className={isHome ? "flex min-h-0 flex-1 flex-col" : undefined}>
+        {children}
+      </main>
+      {!isHome && (
+        <footer className="mt-8 text-center text-sm ks-muted">{t("footerNote")}</footer>
+      )}
       <BottomNav />
     </div>
   );

@@ -19,7 +19,7 @@ export function BottomNav() {
       className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--line)] bg-white/95 backdrop-blur"
       aria-label={t("navMain")}
     >
-      <div className="mx-auto flex max-w-lg justify-around gap-1 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 sm:max-w-2xl">
+      <div className="mx-auto flex max-w-lg justify-around gap-1 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 sm:max-w-2xl lg:max-w-5xl">
         {ITEMS.map((item) => {
           const active =
             item.href === "/"

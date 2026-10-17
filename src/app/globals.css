@@ -127,6 +127,12 @@ select {
   resize: vertical;
 }
 
+.ks-textarea-compact {
+  min-height: 3rem;
+  max-height: 8rem;
+  resize: none;
+}
+
 .ks-input:focus,
 .ks-textarea:focus,
 .ks-select:focus {

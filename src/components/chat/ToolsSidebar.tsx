@@ -45,8 +45,8 @@ function ToolList({ onNavigate }: { onNavigate?: () => void }) {
 export function ToolsSidebar() {
   const { t } = useLanguage();
   return (
-    <aside className="hidden w-72 shrink-0 lg:block">
-      <div className="sticky top-4 rounded-2xl bg-white/60 p-3 ring-1 ring-[var(--line)]">
+    <aside className="hidden w-72 shrink-0 self-stretch overflow-y-auto lg:block">
+      <div className="rounded-2xl bg-white/60 p-3 ring-1 ring-[var(--line)]">
         <p className="mb-2 px-1 text-xs font-bold uppercase tracking-wide text-[var(--ink-muted)]">
           {t("supportTools")}
         </p>
