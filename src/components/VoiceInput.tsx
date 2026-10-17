@@ -33,9 +33,11 @@ function speechLang(lang: Lang): string {
 export function VoiceInput({
   onTranscript,
   disabled,
+  compact = false,
 }: {
   onTranscript: (text: string) => void;
   disabled?: boolean;
+  compact?: boolean;
 }) {
   const { t, lang } = useLanguage();
   const [supported, setSupported] = useState<boolean | null>(null);
@@ -105,8 +107,27 @@ export function VoiceInput({
   }
 
   if (supported === false) {
+    if (compact) return null;
     return (
       <p className="text-sm font-semibold text-[var(--warn)]">{t("voiceUnsupported")}</p>
+    );
+  }
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        className={`ks-btn h-12 w-12 shrink-0 rounded-full p-0 text-lg ${
+          listening ? "ks-btn-danger" : "ks-btn-secondary"
+        }`}
+        onClick={toggle}
+        disabled={disabled || supported === null}
+        aria-pressed={listening}
+        aria-label={listening ? t("voiceStop") : t("voiceStart")}
+        title={listening ? t("voiceStop") : t("voiceStart")}
+      >
+        {listening ? "■" : "🎤"}
+      </button>
     );
   }
 

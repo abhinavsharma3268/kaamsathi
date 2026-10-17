@@ -1,6 +1,6 @@
-# KaamSaathi — Your Work Companion
+# Saath — Work, Rights & Support
 
-PromptWars warm-up: a **real GenAI** companion for Indian gig and informal workers (delivery partners, drivers, daily-wage workers).
+**Together, by your side.** A **real GenAI** companion for Indian gig and informal workers (delivery partners, drivers, daily-wage workers).
 
 ## Modules
 
@@ -11,6 +11,11 @@ PromptWars warm-up: a **real GenAI** companion for Indian gig and informal worke
 5. **Grievance Drafter** — editable complaint letter you can copy (app does **not** submit)
 
 Languages: **English · हिन्दी · ਪੰਜਾਬੀ**
+
+Brand (same name in every language): **Saath**
+- English tagline: Work, Rights & Support  
+- Hindi: काम, हक़ और मदद  
+- Punjabi: ਕੰਮ, ਹੱਕ ਤੇ ਮਦਦ  
 
 ## Setup
 
@@ -58,7 +63,7 @@ GEMINI_MODEL=gemini-flash-latest
 
 **Problem:** Gig workers juggle opaque payouts, safety risks, confusing notices, and weak access to rights info — often with limited digital literacy.
 
-**Solution:** KaamSaathi is a mobile-first companion that combines **honest arithmetic** (earnings) with **real Gemini assistance** (safety, rights, documents, grievances) in simple multilingual language.
+**Solution:** Saath is a mobile-first companion that combines **honest arithmetic** (earnings) with **real Gemini assistance** (safety, rights, documents, grievances) in simple multilingual language.
 
 **Architecture:** Next.js App Router → `/api/ai` (server-held Gemini key) → structured JSON validated with Zod → UI clearly labels *calculated facts* vs *AI suggestions*. Earnings persist in `localStorage`.
 
@@ -78,4 +83,5 @@ GEMINI_MODEL=gemini-flash-latest
 2. **Earnings** → enter gross 1200, incentive 100, hours 8, fuel 150 → see net ₹1150 / ₹143.75/hr → Save → refresh page (persists).  
 3. **Safety** → ask about fatigue after long driving.  
 4. **Rights** → ask about e-Shram / insurance; open a source link.  
-5. **Grievance** → delayed payment story → Generate → edit → Copy.
+5. **Documents** → load sample payslip → Explain.  
+6. **Write a Complaint** → generate letter → copy / open email (you send it).

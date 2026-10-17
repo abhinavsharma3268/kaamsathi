@@ -1,5 +1,5 @@
 /**
- * Occupation personalization for KaamSaathi.
+ * Occupation personalization for Saath.
  * Profiles guide UI order and AI context — they never invent rights or eligibility.
  */
 
@@ -462,7 +462,7 @@ const HOME_TASKS: Record<HomeTaskId, HomeTaskCard> = {
     icon: "📄",
     titleKey: "taskPayDocs",
     descKey: "taskPayDocsDesc",
-    accent: "#efe8ff",
+    accent: "#e6f2ee",
   },
   grievance: {
     id: "grievance",

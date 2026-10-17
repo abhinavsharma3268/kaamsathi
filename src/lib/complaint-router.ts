@@ -39,6 +39,9 @@ export const ComplaintFactsSchema = z.object({
   organisationType: OrganisationTypeSchema.optional(),
   organisationName: z.string().max(200).optional(),
   contactedOrganisation: z.boolean().nullable().optional(),
+  /** After the worker answers a follow-up, force a final helpful report */
+  forceResolve: z.boolean().optional(),
+  followUpRound: z.number().int().min(0).max(5).optional(),
 });
 
 export type ComplaintFacts = z.infer<typeof ComplaintFactsSchema>;
@@ -67,6 +70,10 @@ export const ComplaintPortalAiSchema = z.object({
   confidence: z.enum(["low", "medium", "high"]).optional(),
   isEmergency: z.boolean().optional(),
   copyableSummary: z.string().optional(),
+  /** Calm, easy report for the worker */
+  workerReport: z.string().optional(),
+  /** Short message they can copy/paste to employer or portal */
+  draftedMessage: z.string().optional(),
 });
 
 export type ComplaintPortalAi = z.infer<typeof ComplaintPortalAiSchema>;
@@ -87,12 +94,76 @@ export type ComplaintPortalResult = {
   confidence: "low" | "medium" | "high";
   isEmergency: boolean;
   copyableSummary: string;
+  workerReport: string;
+  draftedMessage: string;
   disclaimer: string;
   meta: {
     generatedBy: "gemini+rules";
     injectionFlagged: boolean;
   };
 };
+
+export function inferOrganisationType(
+  facts: ComplaintFacts,
+): OrganisationType {
+  if (facts.organisationType && facts.organisationType !== "unknown") {
+    return facts.organisationType;
+  }
+  const text = `${facts.complaint} ${facts.organisationName || ""}`.toLowerCase();
+  if (/swiggy|zomato|uber|ola|rapido|blinkit|porter|dunzo|platform|gig app/.test(text)) {
+    return "gig_platform";
+  }
+  if (/e-?\s*shram|eshram/.test(text)) return "government_department";
+  if (/government|govt|ration|labour office|cpgrams|municipality/.test(text)) {
+    return "government_department";
+  }
+  if (/contractor|thekedar/.test(text)) return "contractor";
+  if (
+    /private employer|employer|workplace|factory|shop|office|mistreat|harass|abuse|wages?|salary|unpaid/.test(
+      text,
+    )
+  ) {
+    return "private_employer";
+  }
+  return facts.organisationType || "unknown";
+}
+
+function defaultWorkerReport(
+  facts: ComplaintFacts,
+  category: IssueCategory,
+  portal: ComplaintPortal | null,
+): string {
+  const bits = [
+    "Thank you for sharing what happened. Take a slow breath — you are not alone, and we will take this one step at a time.",
+    `From what you wrote, this looks related to: ${category.replace(/_/g, " ")}.`,
+  ];
+  if (portal) {
+    bits.push(
+      `A possible official website to check is ${portal.displayName}. Open the link yourself and read it carefully. Saath does not submit anything for you.`,
+    );
+  } else {
+    bits.push(
+      "We could not safely pick one exact portal. Below you will find official labour links and a short message you can copy.",
+    );
+  }
+  bits.push("You can edit the draft message before you send it.");
+  return bits.join(" ");
+}
+
+function defaultDraftedMessage(facts: ComplaintFacts): string {
+  const what = sanitizeUserText(facts.complaint, 800);
+  return [
+    "Respected Sir/Madam,",
+    "",
+    "I work as a worker and I want to share a problem calmly.",
+    "",
+    what,
+    "",
+    "Please look into this and tell me the next step. I am ready to share dates and other details if needed.",
+    "",
+    "Thank you.",
+  ].join("\n");
+}
 
 function languageInstruction(lang: Lang): string {
   if (lang === "hi")
@@ -141,7 +212,11 @@ export function finalizeComplaintRouting(
   facts: ComplaintFacts,
 ): Omit<ComplaintPortalResult, "meta"> {
   const disclaimer =
-    "Guidance only — not legal advice. KaamSaathi never submits your complaint. We only show clear official website links; you open the link and file it yourself.";
+    "Guidance only — not legal advice. Saath never submits your complaint. We only show clear official website links; you open the link and file it yourself.";
+
+  const forceResolve = Boolean(
+    facts.forceResolve || (facts.followUpRound && facts.followUpRound >= 1),
+  );
 
   if (ai.isEmergency || ai.issueCategory === "safety_emergency") {
     return {
@@ -157,7 +232,7 @@ export function finalizeComplaintRouting(
       eligibilityCaveat: "Do not use a grievance portal instead of emergency help.",
       preparationChecklist: [],
       nextSteps: [
-        "Open Safety Help in KaamSaathi",
+        "Open Safety Help in Saath",
         "If in danger now: Police 112/100 · Ambulance 108/102",
         "After you are safe, you can return here for grievance routing",
       ],
@@ -165,11 +240,15 @@ export function finalizeComplaintRouting(
       confidence: "high",
       isEmergency: true,
       copyableSummary: "",
+      workerReport:
+        ai.workerReport ||
+        "Please stay safe first. Open Safety Help. We can find complaint links after you are safe.",
+      draftedMessage: ai.draftedMessage || "",
       disclaimer,
     };
   }
 
-  const org = facts.organisationType || "unknown";
+  const org = inferOrganisationType(facts);
   let category = ai.issueCategory;
   let status = ai.status;
   let recommended = isComplaintPortalId(ai.recommendedPortalId)
@@ -179,6 +258,16 @@ export function finalizeComplaintRouting(
   let confidence = ai.confidence || "low";
   let missing = [...(ai.missingInformation || [])];
   let followUp = ai.followUpQuestion?.trim() || undefined;
+
+  // Workplace mistreatment / unfair hours often maps to private employer disputes
+  if (
+    /mistreat|harass|abuse|proper time|overtime|extra hours|not given proper/i.test(
+      facts.complaint,
+    ) &&
+    (category === "unclear" || category === "other")
+  ) {
+    category = "wage_employment_dispute";
+  }
 
   // Hard rule: gig platform payment disputes are NOT auto-SAMADHAN eligible.
   if (
@@ -257,14 +346,12 @@ export function finalizeComplaintRouting(
     confidence = "medium";
   }
 
-  // Ask for missing routing facts when necessary
-  if (status === "recommendation" || status === "needs_information") {
-    const needOrg =
-      !facts.organisationType || facts.organisationType === "unknown";
+  // Ask for missing routing facts only on the first pass — never loop forever
+  if (!forceResolve && (status === "recommendation" || status === "needs_information")) {
+    const needOrg = org === "unknown";
     const needState =
       (category === "government_service" ||
-        category === "punjab_gov_service" ||
-        category === "wage_employment_dispute") &&
+        category === "punjab_gov_service") &&
       !facts.state?.trim();
 
     if (needOrg && !followUp) {
@@ -281,6 +368,28 @@ export function finalizeComplaintRouting(
     }
   }
 
+  // After a follow-up answer: always produce a final report (no more questions)
+  if (forceResolve && status === "needs_information") {
+    if (
+      category === "wage_employment_dispute" &&
+      (org === "private_employer" || org === "contractor")
+    ) {
+      recommended = "samadhan";
+      status = "recommendation";
+      confidence = "medium";
+    } else if (category === "eshram_service") {
+      recommended = "eshram_gms";
+      status = "recommendation";
+    } else if (org === "government_department") {
+      recommended = isPunjab(facts.state) ? "punjab_connect" : "cpgrams";
+      status = "recommendation";
+    } else {
+      status = "manual_assistance";
+      recommended = null;
+    }
+    followUp = undefined;
+  }
+
   // Low confidence without a solid match → manual assistance
   if (
     status === "recommendation" &&
@@ -295,6 +404,13 @@ export function finalizeComplaintRouting(
   // Drop any invented IDs again
   if (recommended && !isComplaintPortalId(recommended)) recommended = null;
   alternatives = filterPortalIds(alternatives).filter((id) => id !== recommended);
+
+  // Hard stop: never ask again after a follow-up answer
+  if (forceResolve && status === "needs_information") {
+    status = "manual_assistance";
+    followUp = undefined;
+    recommended = null;
+  }
 
   if (status === "needs_information") {
     return {
@@ -317,6 +433,8 @@ export function finalizeComplaintRouting(
       confidence: "low",
       isEmergency: false,
       copyableSummary: "",
+      workerReport: "",
+      draftedMessage: "",
       disclaimer,
     };
   }
@@ -330,6 +448,10 @@ export function finalizeComplaintRouting(
     ].filter(
       (s, i, arr) => arr.findIndex((x) => x.url === s.url) === i,
     );
+    const workerReport =
+      ai.workerReport?.trim() || defaultWorkerReport(facts, category, portal);
+    const draftedMessage =
+      ai.draftedMessage?.trim() || defaultDraftedMessage(facts);
 
     return {
       status: "recommendation",
@@ -354,7 +476,7 @@ export function finalizeComplaintRouting(
           : [
               "Tap the official link below (or copy the URL)",
               "Read the portal’s own eligibility text on that website",
-              "If you file anything, do it only on that official site — never inside KaamSaathi",
+              "If you file anything, do it only on that official site — never inside Saath",
             ],
       officialSources: sources,
       confidence,
@@ -362,11 +484,14 @@ export function finalizeComplaintRouting(
       copyableSummary:
         ai.copyableSummary ||
         buildCopyableSummary(facts, category),
+      workerReport,
+      draftedMessage,
       disclaimer,
     };
   }
 
   // manual_assistance default
+  const manualPortal = null;
   return {
     status: "manual_assistance",
     issueCategory: category,
@@ -379,13 +504,13 @@ export function finalizeComplaintRouting(
       "We cannot safely pick one portal from the verified list with the details given.",
     eligibilityCaveat:
       ai.eligibilityCaveat ||
-      "You can draft a complaint letter in KaamSaathi, or check the Ministry of Labour site and your state labour department through official pages.",
+      "You can draft a complaint letter in Saath, or check the Ministry of Labour site and your state labour department through official pages.",
     preparationChecklist: ai.preparationChecklist || [
       "Write dates, amounts, and who is involved",
       "Keep screenshots of payments or messages",
     ],
     nextSteps: ai.nextSteps || [
-      "Use Write a Complaint in KaamSaathi for a letter draft",
+      "Use Write a Complaint in Saath for a letter draft",
       "Check https://labour.gov.in/ for labour department links",
       "If it is an e-Shram account issue, use the e-Shram grievance system",
     ],
@@ -396,6 +521,9 @@ export function finalizeComplaintRouting(
     confidence: "low",
     isEmergency: false,
     copyableSummary: ai.copyableSummary || buildCopyableSummary(facts, category),
+    workerReport:
+      ai.workerReport?.trim() || defaultWorkerReport(facts, category, manualPortal),
+    draftedMessage: ai.draftedMessage?.trim() || defaultDraftedMessage(facts),
     disclaimer,
   };
 }
@@ -443,6 +571,11 @@ export async function runComplaintPortalAi(args: {
     },
   });
 
+  const forceResolve = Boolean(
+    args.facts.forceResolve ||
+      (args.facts.followUpRound && args.facts.followUpRound >= 1),
+  );
+
   const schema = `{
   "status": "needs_information" | "recommendation" | "manual_assistance",
   "issueCategory": one of ${JSON.stringify([
@@ -466,11 +599,13 @@ export async function runComplaintPortalAi(args: {
   "nextSteps": string[],
   "confidence": "low" | "medium" | "high",
   "isEmergency": boolean,
-  "copyableSummary": string
+  "copyableSummary": string,
+  "workerReport": string (calm, easy, short paragraphs for the worker),
+  "draftedMessage": string (short polite message the worker can copy)
 }`;
 
   const system = `
-You are KaamSaathi complaint-portal router for Indian workers.
+You are Saath complaint-portal router for Indian workers.
 ${PROMPT_INJECTION_POLICY}
 Rules:
 - Guidance only. Never say a complaint was filed or will succeed.
@@ -480,13 +615,20 @@ ${portalDirectoryForPrompt()}
 - e-Shram registration/service problems → eshram_gms.
 - Government department/public service grievances → cpgrams; if Punjab government service → punjab_connect.
 - Private industrial/wage disputes may consider samadhan with strong eligibility caveats.
+- Workplace mistreatment, unfair hours, unpaid effort, harassment by a private employer → wage_employment_dispute; prefer samadhan with caveats when forceResolve is true.
 - If unsure, use status needs_information or manual_assistance.
-- Ask at most one short follow-up question when needed.
+- Ask at most ONE short follow-up question, and only on the first pass.
+- When facts.forceResolve is true OR followUpRound >= 1: NEVER use needs_information. Always return recommendation or manual_assistance, plus workerReport and draftedMessage.
+- workerReport: calm, kind, simple words. Reassure the worker. Explain what to do next in 3–5 short sentences. Do not sound scary or legalistic.
+- draftedMessage: a short respectful message they can paste to employer/HR or into a portal form. Include what happened in plain words. No threats.
 - Never ask for Aadhaar, bank passwords, or OTPs.
 `.trim();
 
   const user = [
     languageInstruction(args.lang),
+    forceResolve
+      ? "FORCE FINAL REPORT: Do not ask another question. Give workerReport, draftedMessage, and the best portal you can."
+      : "If one short clarification would help a lot, you may ask it once.",
     `Return JSON only matching: ${schema}`,
     wrapUntrusted("COMPLAINT_FACTS", JSON.stringify(args.facts, null, 2)),
   ].join("\n\n");

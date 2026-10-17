@@ -18,9 +18,23 @@ const body = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "KaamSaathi — Work guidance for gig workers",
+  title: "Saath — Work, Rights & Support",
   description:
-    "Clear guidance for Indian gig and informal workers: earnings, safety, rights and schemes, documents, and complaint letters.",
+    "Together, by your side. Clear guidance for Indian gig and informal workers: earnings, safety, rights and schemes, documents, and complaint letters.",
+  applicationName: "Saath",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/saath-logo.jpg", type: "image/jpeg" }],
+    apple: [{ url: "/saath-logo.jpg", type: "image/jpeg" }],
+  },
+  appleWebApp: {
+    title: "Saath",
+  },
+  openGraph: {
+    title: "Saath — Work, Rights & Support",
+    description: "Together, by your side.",
+    images: [{ url: "/saath-logo.jpg" }],
+  },
 };
 
 export const viewport: Viewport = {

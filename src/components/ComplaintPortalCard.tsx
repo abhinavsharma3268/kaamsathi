@@ -21,6 +21,17 @@ export function ComplaintPortalCard({
     <div className="ks-card space-y-4 border-l-4 border-l-[var(--brand)] p-4">
       <p className="text-sm font-semibold text-[var(--warn)]">{result.disclaimer}</p>
 
+      {result.workerReport ? (
+        <section className="rounded-2xl bg-[var(--bg)] p-4 ring-1 ring-[var(--line)]">
+          <h2 className="text-lg font-bold text-[var(--brand-deep)]">
+            {t("cpWorkerReport")}
+          </h2>
+          <p className="mt-2 whitespace-pre-wrap text-base leading-relaxed text-[var(--ink)]">
+            {result.workerReport}
+          </p>
+        </section>
+      ) : null}
+
       {result.isEmergency && (
         <div className="rounded-2xl bg-[var(--accent-soft)] p-4">
           <p className="font-bold text-[var(--accent)]">{t("emergencyTitle")}</p>
@@ -178,6 +189,19 @@ export function ComplaintPortalCard({
           </ul>
         </section>
       )}
+
+      {result.draftedMessage ? (
+        <section className="space-y-2">
+          <h3 className="text-sm font-bold text-[var(--brand-deep)]">
+            {t("cpDraftedMessage")}
+          </h3>
+          <p className="text-sm ks-muted">{t("cpDraftedHint")}</p>
+          <pre className="whitespace-pre-wrap rounded-2xl bg-[var(--bg)] p-3 text-base leading-relaxed ring-1 ring-[var(--line)]">
+            {result.draftedMessage}
+          </pre>
+          <CopyButton text={result.draftedMessage} />
+        </section>
+      ) : null}
 
       {result.copyableSummary && (
         <section className="space-y-2">

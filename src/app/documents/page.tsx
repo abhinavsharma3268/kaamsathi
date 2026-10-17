@@ -87,7 +87,7 @@ export default function DocumentsPage() {
       if (!res.ok) throw new Error("Could not load sample file.");
       const sample = await res.text();
       setText(sample);
-      setFileLabel("kaamsaathi-sample-payslip.txt (loaded)");
+      setFileLabel("saath-sample-payslip.txt (loaded)");
       setSampleHint(t("docsSampleLoaded"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("docsNoFile"));

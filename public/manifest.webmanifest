@@ -1,0 +1,24 @@
+{
+  "name": "Saath — Work, Rights & Support",
+  "short_name": "Saath",
+  "description": "Together, by your side. Guidance for Indian gig and informal workers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f7f5",
+  "theme_color": "#0f6b4c",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/saath-logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

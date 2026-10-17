@@ -43,6 +43,7 @@ export default function ComplaintPortalPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ComplaintPortalResult | null>(null);
   const [followUpAnswer, setFollowUpAnswer] = useState("");
+  const [followUpRound, setFollowUpRound] = useState(0);
 
   const progress = useMemo(() => {
     if (step === "complaint") return 33;
@@ -54,6 +55,7 @@ export default function ComplaintPortalPage() {
     organisationType?: OrganisationType;
     state?: string;
     followUpNote?: string;
+    forceResolve?: boolean;
   }) {
     const text = complaint.trim();
     if (!text) {
@@ -64,9 +66,17 @@ export default function ComplaintPortalPage() {
     setError(null);
     setResult(null);
 
+    const nextRound = extra?.forceResolve
+      ? Math.max(followUpRound, 1)
+      : followUpRound;
     const mergedComplaint = extra?.followUpNote
       ? `${text}\n\nExtra detail: ${extra.followUpNote}`
       : text;
+
+    if (extra?.followUpNote) {
+      setComplaint(mergedComplaint);
+      setFollowUpRound(nextRound);
+    }
 
     const res = await callComplaintPortal({
       lang,
@@ -78,6 +88,8 @@ export default function ComplaintPortalPage() {
         organisationType: extra?.organisationType ?? organisationType,
         organisationName: organisationName.trim() || undefined,
         contactedOrganisation: contacted,
+        forceResolve: Boolean(extra?.forceResolve) || nextRound >= 1,
+        followUpRound: nextRound,
       },
     });
     setLoading(false);
@@ -100,6 +112,7 @@ export default function ComplaintPortalPage() {
     setOrganisationName("");
     setContacted(null);
     setFollowUpAnswer("");
+    setFollowUpRound(0);
     setResult(null);
     setError(null);
   }
@@ -285,7 +298,10 @@ export default function ComplaintPortalPage() {
                 className="ks-btn ks-btn-primary min-h-14 w-full text-base"
                 disabled={loading || !followUpAnswer.trim()}
                 onClick={() =>
-                  void runRoute({ followUpNote: followUpAnswer.trim() })
+                  void runRoute({
+                    followUpNote: followUpAnswer.trim(),
+                    forceResolve: true,
+                  })
                 }
               >
                 {loading ? t("loading") : t("cpContinue")}

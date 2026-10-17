@@ -137,6 +137,32 @@ describe("complaint portal routing rules", () => {
     expect(result.recommendedPortal).toBeNull();
   });
 
+  it("force-resolves after a follow-up instead of looping", () => {
+    const result = finalizeComplaintRouting(
+      baseAi({
+        status: "needs_information",
+        issueCategory: "unclear",
+        summary:
+          "Worker reports mistreatment at a private employer workplace.",
+        followUpQuestion:
+          "Could you clarify what kind of mistreatment happened?",
+        recommendedPortalId: null,
+      }),
+      {
+        complaint:
+          "I faced mistreatment at my private employer workplace.\n\nExtra detail: the work was not given proper time and efforts",
+        organisationType: "unknown",
+        forceResolve: true,
+        followUpRound: 1,
+      },
+    );
+    expect(result.status).not.toBe("needs_information");
+    expect(result.followUpQuestion).toBeUndefined();
+    expect(result.workerReport.length).toBeGreaterThan(20);
+    expect(result.draftedMessage.length).toBeGreaterThan(20);
+    expect(result.recommendedPortal?.id).toBe("samadhan");
+  });
+
   it("returns manual assistance when the case is uncertain and no portal fits", () => {
     const result = finalizeComplaintRouting(
       baseAi({

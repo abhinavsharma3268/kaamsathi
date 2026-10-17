@@ -29,7 +29,7 @@ export type SyncPack = z.infer<typeof SyncPackSchema>;
 
 export function buildSyncPack(
   earnings: EarningsEntry[],
-  deviceLabel = "KaamSaathi",
+  deviceLabel = "Saath",
 ): SyncPack {
   return {
     version: 1,

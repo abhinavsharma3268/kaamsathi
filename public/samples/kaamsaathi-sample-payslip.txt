@@ -1,4 +1,4 @@
-KaamSaathi Sample — Partner Payment Statement
+Saath Sample — Partner Payment Statement
 Platform: DemoRide Logistics Pvt Ltd
 Partner ID: DR-88421
 Partner Name: Ravi Kumar
@@ -22,6 +22,6 @@ Payout status: PENDING (expected by 10 Oct 2026)
 Bank / UPI mask: ****4521
 
 Notes:
-1. This is a SAMPLE document for PromptWars judges to test KaamSaathi Document Helper.
+1. This is a SAMPLE document for PromptWars judges to test Saath Document Helper.
 2. If deduction UNIQUE_DED_9911 is incorrect, raise a ticket in DemoRide Partner Support within 7 days.
 3. Contact: partner-support@example-demo.invalid

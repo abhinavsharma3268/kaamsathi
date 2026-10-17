@@ -47,7 +47,7 @@ describe("show-me-how", () => {
       explanation: "Write facts first.",
       steps: ["Write what happened", "Check the letter", "Open email"],
       materials: ["Dates", "Amount"],
-      warnings: ["KaamSaathi does not send the complaint"],
+      warnings: ["Saath does not send the complaint"],
       nextAction: "Fill the complaint form below",
       visualIds: ["complaint-steps", "fake-id"],
     });

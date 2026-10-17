@@ -95,7 +95,7 @@ export default function EarningsPage() {
   function onExport() {
     const pack = buildSyncPack(entries);
     downloadJson(
-      `kaamsaathi-earnings-${toDateKey(new Date())}.json`,
+      `saath-earnings-${toDateKey(new Date())}.json`,
       pack,
     );
     setSyncMsg(t("syncDone"));
