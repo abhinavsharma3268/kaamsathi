@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AiBadge, WarnBadge } from "@/components/Badges";
 import { CopyButton } from "@/components/CopyButton";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -22,6 +22,14 @@ const empty: FormState = {
   outcome: "",
 };
 
+/** Keep mailto bodies within common mobile/desktop client limits. */
+const MAILTO_BODY_LIMIT = 1800;
+
+function buildMailto(to: string, subject: string, body: string): string {
+  // Native mail apps (Gmail, Outlook, Apple Mail) on phone/PC
+  return `mailto:${to.trim()}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 export default function GrievancePage() {
   const { t, lang } = useLanguage();
   const [form, setForm] = useState<FormState>(empty);
@@ -29,6 +37,23 @@ export default function GrievancePage() {
   const [tip, setTip] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mailTo, setMailTo] = useState("");
+  const [mailSubject, setMailSubject] = useState("");
+  const [mailMsg, setMailMsg] = useState<string | null>(null);
+
+  const defaultSubject = useMemo(() => {
+    const platform = form.platform.trim() || "Support";
+    const amount = form.amount.trim();
+    return amount
+      ? `Complaint — pending payment ₹${amount} (${platform})`
+      : `Complaint / grievance — ${platform}`;
+  }, [form.platform, form.amount]);
+
+  useEffect(() => {
+    if (draft && !mailSubject.trim()) {
+      setMailSubject(defaultSubject);
+    }
+  }, [draft, defaultSubject, mailSubject]);
 
   async function onGenerate(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +64,7 @@ export default function GrievancePage() {
     setLoading(true);
     setError(null);
     setTip(null);
+    setMailMsg(null);
 
     const res = await callAi({
       module: "grievance",
@@ -60,8 +86,38 @@ export default function GrievancePage() {
       return;
     }
 
-    setDraft(res.draft || res.answer);
+    const nextDraft = res.draft || res.answer;
+    setDraft(nextDraft);
     setTip(res.answer);
+    setMailSubject(defaultSubject);
+  }
+
+  function openMailApp() {
+    setMailMsg(null);
+    if (!draft.trim()) {
+      setMailMsg(t("grievanceMailNeedDraft"));
+      return;
+    }
+    if (!mailTo.trim() || !mailTo.includes("@")) {
+      setMailMsg(t("grievanceMailNeedTo"));
+      return;
+    }
+
+    let body = draft.trim();
+    if (body.length > MAILTO_BODY_LIMIT) {
+      body =
+        body.slice(0, MAILTO_BODY_LIMIT) +
+        "\n\n[Message truncated for email app. Full draft was copied — paste the rest if needed.]";
+      void navigator.clipboard.writeText(draft).catch(() => undefined);
+    }
+
+    const href = buildMailto(
+      mailTo.trim(),
+      mailSubject.trim() || defaultSubject,
+      body,
+    );
+    // Opens Gmail / Outlook / Apple Mail / default client on phone or PC
+    window.location.href = href;
   }
 
   return (
@@ -154,6 +210,44 @@ export default function GrievancePage() {
             />
           </label>
           <CopyButton text={draft} />
+
+          <div className="mt-2 space-y-3 rounded-2xl bg-[var(--brand-soft)] p-4 ring-1 ring-[var(--line)]">
+            <h2 className="font-bold text-[var(--brand-deep)]">
+              {t("grievanceMailTitle")}
+            </h2>
+            <p className="text-sm ks-muted">{t("grievanceMailHint")}</p>
+            <label>
+              <span className="ks-label">{t("grievanceMailTo")}</span>
+              <input
+                className="ks-input"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="support@example.com"
+                value={mailTo}
+                onChange={(e) => setMailTo(e.target.value)}
+              />
+            </label>
+            <label>
+              <span className="ks-label">{t("grievanceMailSubject")}</span>
+              <input
+                className="ks-input"
+                value={mailSubject}
+                onChange={(e) => setMailSubject(e.target.value)}
+                placeholder={defaultSubject}
+              />
+            </label>
+            <button
+              type="button"
+              className="ks-btn ks-btn-primary w-full"
+              onClick={openMailApp}
+            >
+              {t("grievanceMailOpen")}
+            </button>
+            {mailMsg && (
+              <p className="text-sm font-semibold text-[var(--danger)]">{mailMsg}</p>
+            )}
+          </div>
         </section>
       )}
     </div>
